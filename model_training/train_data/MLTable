@@ -1,0 +1,17 @@
+$schema: https://azuremlschemas.azureedge.net/latest/MLTable.schema.json
+paths:
+    - file: ./train_admissions_dataset.csv
+transformations:
+- read_delimited:
+    delimiter: ','
+    encoding: utf8
+    header: all_files_same_headers
+    infer_column_types: false
+- convert_column_types:
+    - columns: [GPA]
+      column_type: float
+    - columns: [SAT, Age, Gender,EssayScore,InterviewScore,ExtracurricularScore,RecommendationScore,LegacyStatus,FinancialAid,FirstGeneration,Race_American_Indian_or_Alaska_Native,Race_Asian,Race_Black_or_African_American,Race_Native_Hawaiian_or_Other_Pacific_Islander, Race_White, Ethnicity_Hispanic_or_Latino, Accept]
+      column_type: int
+type: mltable
+
+
