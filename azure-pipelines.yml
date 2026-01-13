@@ -9,6 +9,7 @@ pool:
 
 variables:
   # Azure ML workspace targeting variables
+  subscription_id: "a6b2ef6f-dbdd-4051-8a2e-9d1828d81dc2"  # TODO: Replace with your actual subscription ID
   azureResourceGroup: 'rg-admissions'
   azureWorkspaceName: 'Admissions-Workspace'
   # Service connection name for Azure authentication
@@ -53,6 +54,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
 
     # Step 2: Dataset Migration
     - task: AzureCLI@2
@@ -66,6 +68,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
 
     # Step 3: Model Training
     - task: AzureCLI@2
@@ -79,6 +82,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
 
     # Step 4: Register Model
     - task: AzureCLI@2
@@ -92,6 +96,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
 
     # Responsible AI Gate
     - task: AzureCLI@2
@@ -105,6 +110,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
 
     - task: AzureCLI@2
       displayName: 'RAI Analysis & Gate'
@@ -127,6 +133,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
 
 
 # ============================================================================
@@ -157,6 +164,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
     
     # ========================================================================
     # DEPLOYMENT STEPS
@@ -173,6 +181,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
     
     - task: AzureCLI@2
       displayName: '2. Deploy Model to Endpoint'
@@ -185,6 +194,7 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
     
     - task: AzureCLI@2
       displayName: '3. Configure Model Monitoring'
@@ -197,3 +207,4 @@ jobs:
       env:
         RESOURCE_GROUP: $(azureResourceGroup)
         WS_NAME: $(azureWorkspaceName)
+        SUBSCRIPTION: $(subscription_id)
