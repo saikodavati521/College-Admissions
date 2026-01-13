@@ -51,8 +51,8 @@ jobs:
         inlineScript: |
           python create_env/create_env.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
 
     # Step 2: Dataset Migration
     - task: AzureCLI@2
@@ -64,8 +64,8 @@ jobs:
         inlineScript: |
           python data_migration/migrate.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
 
     # Step 3: Model Training
     - task: AzureCLI@2
@@ -77,8 +77,8 @@ jobs:
         inlineScript: |
           python command_job.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
 
     # Step 4: Register Model
     - task: AzureCLI@2
@@ -90,8 +90,8 @@ jobs:
         inlineScript: |
           python register_model/register.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
 
     # Responsible AI Gate
     - task: AzureCLI@2
@@ -103,8 +103,8 @@ jobs:
         inlineScript: |
           python Responsible_AI_Insights/responsible.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
 
     - task: AzureCLI@2
       displayName: 'RAI Analysis & Gate'
@@ -125,8 +125,8 @@ jobs:
           fi
       name: raiGate
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
 
 
 # ============================================================================
@@ -155,8 +155,8 @@ jobs:
         pip install -r requirements.txt
       displayName: 'Install Python Dependencies'
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
     
     # ========================================================================
     # DEPLOYMENT STEPS
@@ -171,8 +171,8 @@ jobs:
         inlineScript: |
           python model_deployment/endpoint_creation/endpoint.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
     
     - task: AzureCLI@2
       displayName: '2. Deploy Model to Endpoint'
@@ -183,8 +183,8 @@ jobs:
         inlineScript: |
           python model_deployment/deployment.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
     
     - task: AzureCLI@2
       displayName: '3. Configure Model Monitoring'
@@ -195,5 +195,5 @@ jobs:
         inlineScript: |
           python model_deployment/model_monitoring/monitor.py
       env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
+        RESOURCE_GROUP: $(azureResourceGroup)
+        WS_NAME: $(azureWorkspaceName)
