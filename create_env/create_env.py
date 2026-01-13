@@ -30,7 +30,6 @@ def main():
     print(f"Connecting to Azure ML workspace: {workspace_name}")
     ml_client = MLClient(
         credential=credential,
-        subscription_id=azureSubscription,
         resource_group_name=resource_group,
         workspace_name=workspace_name
     )
