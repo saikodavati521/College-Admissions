@@ -1,5 +1,5 @@
 # Azure ML Training and Deployment Pipeline
-# Two-stage pipeline: Train (with RAI gate) -> Deploy (conditional)
+# Two-job pipeline: Train (with RAI gate) -> Deploy (conditional)
 
 trigger:
 - main
@@ -14,19 +14,16 @@ variables:
   # Service connection name for Azure authentication
   azureServiceConnection: 'Azure-ML-Admissions-Connection'  # TODO: Replace with your actual service connection name
 
-stages:
+jobs:
 # ============================================================================
-# TRAIN STAGE
+# TRAIN JOB
 # ============================================================================
-- stage: Train
-  displayName: 'Train and Validate Model'
-  jobs:
-  - job: TrainJob
-    displayName: 'Train Job - Model Training and RAI Validation'
-    pool:
-      vmImage: 'ubuntu-latest'
-    
-    steps:
+- job: TrainJob
+  displayName: 'Train Job - Model Training and RAI Validation'
+  pool:
+    vmImage: 'ubuntu-latest'
+  
+  steps:
     # ========================================================================
     # INITIAL SETUP
     # ========================================================================
@@ -41,9 +38,6 @@ stages:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
       displayName: 'Install Python Dependencies'
-      env:
-        resource_group_name: $(azureResourceGroup)
-        workspace_name: $(azureWorkspaceName)
     
     # ========================================================================
     # STEP 1: Create/Update Custom Environment
@@ -136,19 +130,16 @@ stages:
 
 
 # ============================================================================
-# DEPLOY STAGE
+# DEPLOY JOB
 # ============================================================================
-- stage: Deploy
-  displayName: 'Deploy Model to Production'
-  dependsOn: Train
-  condition: and(succeeded(), eq(dependencies.Train.outputs['TrainJob.raiGate.rai_pass'], 'true'))
-  jobs:
-  - job: DeployJob
-    displayName: 'Deploy Job - Model Deployment'
-    pool:
-      vmImage: 'ubuntu-latest'
-    
-    steps:
+- job: DeployJob
+  displayName: 'Deploy Job - Model Deployment'
+  dependsOn: TrainJob
+  condition: and(succeeded(), eq(dependencies.TrainJob.outputs['raiGate.rai_pass'], 'true'))
+  pool:
+    vmImage: 'ubuntu-latest'
+  
+  steps:
     # ========================================================================
     # INITIAL SETUP
     # ========================================================================

@@ -21,12 +21,12 @@ test_data_name = "admissions-test-data"
 def main():
     """Main function to register MLTable data assets in Azure ML."""
     # Authenticate using default Azure credentials
-    credential = DefaultAzureCredential()
+    azureSubscription = DefaultAzureCredential()
 
     # Get a handle to the workspace
     print(f"Connecting to Azure ML workspace: {workspace_name}")
     ml_client = MLClient(
-        credential=credential,
+        credential=azureSubscription,
         subscription_id=subscription_id,
         resource_group_name=resource_group,
         workspace_name=workspace_name
