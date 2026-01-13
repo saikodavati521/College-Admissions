@@ -13,7 +13,6 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 # Get Azure ML workspace details from environment variables
-azureSubscription = os.getenv("SUBSCRIPTION")
 resource_group = os.getenv("RESOURCE_GROUP")
 workspace_name = os.getenv("WS_NAME")
 
