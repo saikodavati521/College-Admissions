@@ -143,7 +143,7 @@ def main():
     print(f"Found job: {latest_job.name} (status: {status})")
 
     # Ensure job is completed
-    if status not in {"completed", "finished"}:
+    if status not in {"completed"}:
         raise RuntimeError(
             f"Latest job '{latest_job.name}' is not completed (status={status}). "
             "Wait for completion before registering the model."

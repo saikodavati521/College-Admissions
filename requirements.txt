@@ -1,4 +1,5 @@
 mlflow
+azureml-mlflow
 mltable
 numpy
 pandas
