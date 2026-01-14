@@ -45,7 +45,7 @@ RACE_FEATURES = [
     "Race_White",
     "Ethnicity_Hispanic_or_Latino"
 ]
-RACE_STDEV_THRESHOLD = 5.0  # Number of standard deviations for outlier detection
+RACE_STDEV_THRESHOLD = .0  # Number of standard deviations for outlier detection
 
 
 def find_latest_job_in_experiment(ml_client, experiment_name):
@@ -432,6 +432,10 @@ def main():
         print(f"RAI Validation: {'PASSED' if rai_pass else 'FAILED'}")
         print("="*80)
         
+        # Exit with failure code if RAI validation failed
+        if not rai_pass:
+            sys.exit(1)
+        
         return rai_pass
         
     except RuntimeError as e:
@@ -440,7 +444,6 @@ def main():
     except Exception as e:
         print(f"\n❌ Unexpected error: {str(e)}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
