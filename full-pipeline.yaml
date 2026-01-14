@@ -54,6 +54,78 @@ stages:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
         displayName: 'Install Python Dependencies'
+      
+      # ========================================================================
+      # STEP 1: Create/Update Custom Environment
+      # ========================================================================
+      - task: AzureCLI@2
+        displayName: '1. Create/Update Azure ML Environment'
+        inputs:
+          azureSubscription: $(azureServiceConnection)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript' 
+          inlineScript: |
+            python create_env/create_env.py
+        env:
+          RESOURCE_GROUP: $(azureResourceGroup)
+          WS_NAME: $(azureWorkspaceName)
+          SUBSCRIPTION_ID: $(subscription_id)
+
+      # Step 2: Dataset Migration
+      - task: AzureCLI@2
+        displayName: '2. Dataset Migration'
+        inputs:
+          azureSubscription: $(azureServiceConnection)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            python data_migration/migrate.py
+        env:
+          RESOURCE_GROUP: $(azureResourceGroup)
+          WS_NAME: $(azureWorkspaceName)
+          SUBSCRIPTION_ID: $(subscription_id)
+
+      # Step 3: Model Training
+      - task: AzureCLI@2
+        displayName: '3. Model Training'
+        inputs:
+          azureSubscription: $(azureServiceConnection)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            python command_job.py
+        env:
+          RESOURCE_GROUP: $(azureResourceGroup)
+          WS_NAME: $(azureWorkspaceName)
+          SUBSCRIPTION_ID: $(subscription_id)
+
+      # Step 4: Register Model
+      - task: AzureCLI@2
+        displayName: 'Register Model'
+        inputs:
+          azureSubscription: $(azureServiceConnection)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            python register_model/register.py
+        env:
+          RESOURCE_GROUP: $(azureResourceGroup)
+          WS_NAME: $(azureWorkspaceName)
+          SUBSCRIPTION_ID: $(subscription_id)
+
+      # Responsible AI Gate
+      - task: AzureCLI@2
+        displayName: 'Generate Responsible AI Dashboard'
+        inputs:
+          azureSubscription: $(azureServiceConnection)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            python Responsible_AI_Insights/responsible.py
+        env:
+          RESOURCE_GROUP: $(azureResourceGroup)
+          WS_NAME: $(azureWorkspaceName)
+          SUBSCRIPTION_ID: $(subscription_id)
 
       - task: AzureCLI@2
         displayName: 'RAI Analysis & Gate'

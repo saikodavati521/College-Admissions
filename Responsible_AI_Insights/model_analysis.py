@@ -27,7 +27,7 @@ load_dotenv()
 # Constants
 DOWNLOAD_PATH = "./rai_outputs"
 OUTPUT_NAME = "ux_json"
-SHAP_THRESHOLD = 5.4  # Threshold for sensitive feature SHAP values
+SHAP_THRESHOLD = 0.4  # Threshold for sensitive feature SHAP values
 SENSITIVE_FEATURES = [
     "Gender",
     "Race_American_Indian_or_Alaska_Native",
@@ -45,7 +45,7 @@ RACE_FEATURES = [
     "Race_White",
     "Ethnicity_Hispanic_or_Latino"
 ]
-RACE_STDEV_THRESHOLD = 100.0  # Number of standard deviations for outlier detection
+RACE_STDEV_THRESHOLD = 2.0  # Number of standard deviations for outlier detection
 
 
 def find_latest_job_in_experiment(ml_client, experiment_name):
@@ -416,7 +416,7 @@ def main():
         rai_pass = validate_sensitive_features(feature_list, scores)
         
         # Set Azure Pipeline output variable for use in subsequent stages
-        if rai_pass:
+        if rai_pass==True:
             print("##vso[task.setvariable variable=rai_pass;isOutput=true]true")
             print("RAI Gate: PASSED")
         else:
