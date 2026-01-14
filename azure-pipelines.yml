@@ -69,6 +69,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
+          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
 
       # Step 2: Dataset Migration
       - task: AzureCLI@2
