@@ -17,7 +17,7 @@ from data_migration.migrate import train_data_name, test_data_name
 load_dotenv()
 
 # Get Azure ML workspace details from environment variables
-subscription_id = os.getenv("SUBSCRIPTION")
+subscription_id = os.getenv("SUBSCRIPTION_ID")
 resource_group = os.getenv("RESOURCE_GROUP")
 workspace_name = os.getenv("WS_NAME")
 
@@ -55,6 +55,10 @@ def main():
             test_data=Input(type="mltable", path=test_data),
             n_estimators=1100,
             random_state=42,
+            n_jobs=-1,
+            min_samples_split=20,
+            min_samples_leaf=10,
+            max_features="sqrt",
             artifact_path_name=artifact_path_name,
         ),
         code="./model_training",  # location of source code
@@ -62,6 +66,10 @@ def main():
         command="python train.py --train_data ${{inputs.train_data}} --test_data ${{inputs.test_data}} "
                 "--n_estimators ${{inputs.n_estimators}} "
                 "--random_state ${{inputs.random_state}} "
+                "--n_jobs ${{inputs.n_jobs}} "
+                "--min_samples_split ${{inputs.min_samples_split}} "
+                "--min_samples_leaf ${{inputs.min_samples_leaf}} "
+                "--max_features ${{inputs.max_features}} "
                 "--artifact_path_name ${{inputs.artifact_path_name}}",
         environment="admissions_environment@latest",
         experiment_name=experiment_name,

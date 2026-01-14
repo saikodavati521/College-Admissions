@@ -53,17 +53,35 @@ def parse_args():
         default=1000,
         help="Number of trees in the random forest"
     )
-    parser.add_argument( #This can be deleted or needs to be updated so that I can add it to command_job.py
-        "--max_depth",
-        type=int,
-        default=None,
-        help="Maximum depth of the trees"
-    )
     parser.add_argument(
         "--random_state",
         type=int,
         default=42,
         help="Random state for reproducibility"
+    )
+    parser.add_argument(
+        "--n_jobs",
+        type=int,
+        default=-1,
+        help="Number of CPU cores to use for training (-1 uses all available cores)"
+    )
+    parser.add_argument(
+        "--min_samples_split",
+        type=int,
+        default=2,
+        help="Minimum number of samples required to split an internal node"
+    )
+    parser.add_argument(
+        "--min_samples_leaf",
+        type=int,
+        default=1,
+        help="Minimum number of samples required to be at a leaf node"
+    )
+    parser.add_argument(
+        "--max_features",
+        type=str,
+        default="sqrt",
+        help="Number of features to consider when looking for the best split (sqrt, log2, or None)"
     )
     parser.add_argument(
         "--artifact_path_name",
@@ -84,18 +102,19 @@ def load_data(train_path, test_path):
     Returns:
         tuple: (X_train, y_train, X_test, y_test) - training and testing data splits
     """
-    # Convert to absolute paths if relative paths are provided
+    # Convert to absolute paths if relative paths are provided (For Local Training)
     # This ensures the script works regardless of execution directory
     train_path_obj = Path(train_path)
     if not train_path_obj.is_absolute():
-        # Get the script's directory and construct absolute path from project root
-        script_dir = Path(__file__).parent.parent
-        train_path_obj = script_dir / train_path
+        # Get project root (parent of model_training directory)
+        project_root = Path(__file__).parent.parent
+        train_path_obj = project_root / train_path
     
     test_path_obj = Path(test_path)
     if not test_path_obj.is_absolute():
-        script_dir = Path(__file__).parent.parent
-        test_path_obj = script_dir / test_path
+        # Get project root (parent of model_training directory)
+        project_root = Path(__file__).parent.parent
+        test_path_obj = project_root / test_path
     
     # Load training data from MLTable
     print(f"Loading training data from MLTable: {train_path_obj}")
@@ -190,8 +209,11 @@ def main():
         "train_data": args.train_data,
         "test_data": args.test_data,
         "n_estimators": args.n_estimators,
-        "max_depth": args.max_depth if args.max_depth is not None else "None",
-        "random_state": args.random_state
+        "random_state": args.random_state,
+        "n_jobs": args.n_jobs,
+        "min_samples_split": args.min_samples_split,
+        "min_samples_leaf": args.min_samples_leaf,
+        "max_features": args.max_features
     }
     mlflow.log_params(params)
     
@@ -227,9 +249,11 @@ def main():
         ('preprocessor', preprocessor),
         ('classifier', RandomForestClassifier(
             n_estimators=args.n_estimators,
-            max_depth=args.max_depth,
             random_state=args.random_state,
-            n_jobs=-1
+            n_jobs=args.n_jobs,
+            min_samples_split=args.min_samples_split,
+            min_samples_leaf=args.min_samples_leaf,
+            max_features=args.max_features
         ))
     ])
     
