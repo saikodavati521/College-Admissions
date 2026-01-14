@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 from azure.ai.ml import MLClient
@@ -20,6 +21,18 @@ load_dotenv()
 
 # Define deployment name
 deployment_name = "admissions-deployment"
+
+# Define required columns for the admissions model
+required_columns = [
+    'GPA', 'SAT', 'Age', 'Gender',
+    'EssayScore', 'InterviewScore', 'ExtracurricularScore', 
+    'RecommendationScore',
+    'LegacyStatus', 'FinancialAid', 'FirstGeneration',
+    'Race_American_Indian_or_Alaska_Native', 'Race_Asian', 
+    'Race_Black_or_African_American',
+    'Race_Native_Hawaiian_or_Other_Pacific_Islander', 'Race_White', 
+    'Ethnicity_Hispanic_or_Latino'
+]
 
 # Get Azure ML workspace details from environment variables
 subscription_id = os.getenv("SUBSCRIPTION_ID")
@@ -66,6 +79,7 @@ if __name__ == '__main__':
         instance_count=1,
         environment_variables={
             "MLFLOW_FOLDER_NAME": artifact_path_name,
+            "REQUIRED_COLUMNS": json.dumps(required_columns),
         },
         app_insights_enabled=True,
     )

@@ -111,14 +111,15 @@ def run(raw_data):
         # Convert to pandas DataFrame using columns and data
         input_df = pd.DataFrame(data, columns=columns, index=index)
         
-        # Define required columns for the admissions model
-        required_columns = [
-            'GPA', 'SAT', 'Age', 'Gender',
-            'EssayScore', 'InterviewScore', 'ExtracurricularScore', 'RecommendationScore',
-            'LegacyStatus', 'FinancialAid', 'FirstGeneration',
-            'Race_American_Indian_or_Alaska_Native', 'Race_Asian', 'Race_Black_or_African_American',
-            'Race_Native_Hawaiian_or_Other_Pacific_Islander', 'Race_White', 'Ethnicity_Hispanic_or_Latino'
-        ]
+        # Get required columns from environment variable (set in deployment.py)
+        required_columns_json = os.getenv("REQUIRED_COLUMNS")
+        if not required_columns_json:
+            raise RuntimeError(
+                "REQUIRED_COLUMNS environment variable not set. "
+                "This should be configured in deployment.py"
+            )
+        
+        required_columns = json.loads(required_columns_json)
         
         # Validate that all required columns are present
         missing_columns = set(required_columns) - set(input_df.columns)
