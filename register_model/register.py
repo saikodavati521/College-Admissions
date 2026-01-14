@@ -30,7 +30,7 @@ from command_job import artifact_path_name, experiment_name
 load_dotenv()
 
 # Get Azure ML workspace details from environment variables
-subscription_id = os.getenv("SUBSCRIPTION")
+subscription_id = os.getenv("SUBSCRIPTION_ID")
 resource_group = os.getenv("RESOURCE_GROUP")
 workspace_name = os.getenv("WS_NAME")
 

@@ -383,7 +383,7 @@ def main():
     credential = DefaultAzureCredential()
     
     # Get Azure ML workspace details from environment variables
-    subscription_id = os.getenv("SUBSCRIPTION")
+    subscription_id = os.getenv("SUBSCRIPTION_ID")
     resource_group = os.getenv("RESOURCE_GROUP")
     workspace_name = os.getenv("WS_NAME")
     
@@ -415,6 +415,14 @@ def main():
         # Validate sensitive features against SHAP threshold
         rai_pass = validate_sensitive_features(feature_list, scores)
         
+        # Set Azure Pipeline output variable for use in subsequent stages
+        if rai_pass:
+            print("##vso[task.setvariable variable=rai_pass;isOutput=true]true")
+            print("RAI Gate: PASSED")
+        else:
+            print("##vso[task.setvariable variable=rai_pass;isOutput=true]false")
+            print("RAI Gate: FAILED")
+        
         print("\n" + "="*80)
         print("RAI Dashboard Analysis Complete")
         print("="*80)
@@ -423,6 +431,10 @@ def main():
         print(f"Output location: {DOWNLOAD_PATH}")
         print(f"RAI Validation: {'PASSED' if rai_pass else 'FAILED'}")
         print("="*80)
+        
+        # Exit with appropriate code for pipeline detection
+        if not rai_pass:
+            sys.exit(1)
         
         return rai_pass
         

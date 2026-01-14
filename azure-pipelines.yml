@@ -39,10 +39,10 @@ stages:
           scriptLocation: inlineScript
           inlineScript: |
             echo "Fetching subscription from service connection..."
-            AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+            azure_subscription_id=$(az account show --query id -o tsv)
 
             # Export for the rest of the job
-            echo "##vso[task.setvariable variable=SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID"
+            echo "##vso[task.setvariable variable=subscription_id]$azure_subscription_id"
       
       - task: UsePythonVersion@0
         displayName: 'Use Python 3.9'
@@ -69,7 +69,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
 
       # Step 2: Dataset Migration
       - task: AzureCLI@2
@@ -83,7 +83,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
 
       # Step 3: Model Training
       - task: AzureCLI@2
@@ -97,7 +97,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
 
       # Step 4: Register Model
       - task: AzureCLI@2
@@ -111,7 +111,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
 
       # Responsible AI Gate
       - task: AzureCLI@2
@@ -125,7 +125,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
 
       - task: AzureCLI@2
         displayName: 'RAI Analysis & Gate'
@@ -135,20 +135,11 @@ stages:
           scriptLocation: 'inlineScript'
           inlineScript: |
             python Responsible_AI_Insights/model_analysis.py
-            RAI_EXIT_CODE=$?
-            if [ $RAI_EXIT_CODE -eq 0 ]; then
-              echo "##vso[task.setvariable variable=rai_pass;isOutput=true]true"
-              echo "RAI Gate: PASSED"
-            else
-              echo "##vso[task.setvariable variable=rai_pass;isOutput=true]false"
-              echo "RAI Gate: FAILED"
-              exit 1
-            fi
         name: raiGate
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
 
 
 # ============================================================================
@@ -177,10 +168,10 @@ stages:
           scriptLocation: inlineScript
           inlineScript: |
             echo "Fetching subscription from service connection..."
-            AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+            azure_subscription_id=$(az account show --query id -o tsv)
 
             # Export for the rest of the job
-            echo "##vso[task.setvariable variable=SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID"
+            echo "##vso[task.setvariable variable=subscription_id]$azure_subscription_id"
       
       - task: UsePythonVersion@0
         displayName: 'Use Python 3.9'
@@ -195,7 +186,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
       
       # ========================================================================
       # DEPLOYMENT STEPS
@@ -212,7 +203,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
       
       - task: AzureCLI@2
         displayName: '2. Deploy Model to Endpoint'
@@ -225,7 +216,7 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)
       
       - task: AzureCLI@2
         displayName: '3. Configure Model Monitoring'
@@ -238,4 +229,4 @@ stages:
         env:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
-          SUBSCRIPTION_ID: $(SUBSCRIPTION_ID)
+          SUBSCRIPTION_ID: $(subscription_id)

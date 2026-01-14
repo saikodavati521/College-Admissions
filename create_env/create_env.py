@@ -1,6 +1,7 @@
 """Create and register a custom environment for College Admissions Model in Azure ML."""
 
 import os
+import time
 from dotenv import load_dotenv
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import Environment
@@ -54,6 +55,42 @@ def main():
         f"Environment with name {custom_job_env.name} is registered to workspace, "
         f"the environment version is {custom_job_env.version}"
     )
+
+    # Poll the environment build status until completion
+    print("\nPolling environment build status...")
+    environment_name = custom_job_env.name
+    environment_version = custom_job_env.version
+
+    while True:
+        # Get the latest environment status
+        env_status = ml_client.environments.get(
+            name=environment_name,
+            version=environment_version
+        )
+
+        # Check if environment has a build status
+        if hasattr(env_status, 'build') and env_status.build:
+            build_state = env_status.build.build_state
+            print(f"Latest build status: {build_state}")
+
+            # Check for terminal states
+            if build_state in ["Succeeded", "Failed", "Canceled"]:
+                if build_state == "Succeeded":
+                    print(f"\n✓ Environment '{environment_name}' version "
+                          f"{environment_version} is ready!")
+                    break
+                else:
+                    raise RuntimeError(
+                        f"Environment build {build_state}. "
+                        f"Check Azure ML Studio for details."
+                    )
+        else:
+            # If no build object, environment is likely ready
+            print("Environment is ready (no build required).")
+            break
+
+        # Wait before polling again
+        time.sleep(30)
 
 
 if __name__ == "__main__":

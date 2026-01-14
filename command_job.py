@@ -1,6 +1,7 @@
 """Create and submit a command job for College Admissions Model training in Azure ML."""
 
 import os
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 from azure.ai.ml import command, Input, MLClient
@@ -85,6 +86,24 @@ def main():
     studio_url = returned_job.studio_url
     print(f"Monitor your job at {studio_url}")
 
+    # Poll the job status until completion
+    print("\nPolling job status...")
+    while returned_job.status not in [
+        "Completed",
+        "Failed",
+        "Canceled",
+        "NotResponding",
+    ]:
+        time.sleep(30)
+        returned_job = ml_client.jobs.get(returned_job.name)
+        print(f"Latest status: {returned_job.status}")
+
+    # Assert job completed successfully
+    assert returned_job.status == "Completed", (
+        f"Job ended with status: {returned_job.status}. "
+        f"Check Azure ML Studio for details."
+    )
+    print(f"\n✓ Training job completed successfully!")
 
 if __name__ == "__main__":
     main()
