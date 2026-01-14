@@ -76,7 +76,7 @@ stages:
 - stage: Deploy
   displayName: 'Deploy Stage - Model Deployment'
   dependsOn: Train
-  condition: and(succeeded(), eq(stageDependencies.Train.TrainJob.outputs['raiGate.rai_pass'], 'true'))
+  condition: and(succeeded(), eq(stageDependencies.Train.outputs['TrainJob.raiGate.rai_pass'], 'true'))
   jobs:
   - job: DeployJob
     displayName: 'Deploy Job - Model Deployment'

@@ -417,10 +417,10 @@ def main():
         
         # Set Azure Pipeline output variable for use in subsequent stages
         if rai_pass==True:
-            print(f"##vso[task.setvariable variable=rai_pass;isOutput=true]{rai_pass}")
+            print(f"##vso[task.setvariable variable=rai_pass;isOutput=true]true")
             print("RAI Gate: PASSED")
         else:
-            print(f"##vso[task.setvariable variable=rai_pass;isOutput=true]{rai_pass}")
+            print(f"##vso[task.setvariable variable=rai_pass;isOutput=true]false")
             print("RAI Gate: FAILED")
         
         print("\n" + "="*80)
@@ -431,11 +431,6 @@ def main():
         print(f"Output location: {DOWNLOAD_PATH}")
         print(f"RAI Validation: {'PASSED' if rai_pass else 'FAILED'}")
         print("="*80)
-        
-        # Exit with failure code if RAI validation failed
-        if not rai_pass:
-            sys.exit(1)
-        
         return rai_pass
         
     except RuntimeError as e:
