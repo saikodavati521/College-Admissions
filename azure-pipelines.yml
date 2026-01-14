@@ -39,10 +39,10 @@ stages:
           scriptLocation: inlineScript
           inlineScript: |
             echo "Fetching subscription from service connection..."
-            SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+            AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
             # Export for the rest of the job
-            echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$SUBSCRIPTION_ID"
+            echo "##vso[task.setvariable variable=SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID"
       
       - task: UsePythonVersion@0
         displayName: 'Use Python 3.9'
@@ -170,17 +170,17 @@ stages:
       # ========================================================================
       
       - task: AzureCLI@2
-        displayName: "Authenticate & export Azure subscription"
+        displayName: "Authenticate & export Azure Subscription ID"
         inputs:
           azureSubscription: $(azureServiceConnection)
           scriptType: bash
           scriptLocation: inlineScript
           inlineScript: |
             echo "Fetching subscription from service connection..."
-            SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-            
+            AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
             # Export for the rest of the job
-            echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$SUBSCRIPTION_ID"
+            echo "##vso[task.setvariable variable=SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID"
       
       - task: UsePythonVersion@0
         displayName: 'Use Python 3.9'
