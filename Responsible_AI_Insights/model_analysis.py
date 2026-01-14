@@ -45,7 +45,7 @@ RACE_FEATURES = [
     "Race_White",
     "Ethnicity_Hispanic_or_Latino"
 ]
-RACE_STDEV_THRESHOLD = .0  # Number of standard deviations for outlier detection
+RACE_STDEV_THRESHOLD = 5.0  # Number of standard deviations for outlier detection
 
 
 def find_latest_job_in_experiment(ml_client, experiment_name):
