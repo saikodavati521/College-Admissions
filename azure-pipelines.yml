@@ -99,6 +99,8 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                echo "Waiting 15 seconds for environment to be fully ready..."
+                sleep 15
                 python model_training/command_job.py
             env:
               RESOURCE_GROUP: $(azureResourceGroup)
