@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # Create or update action group
     action_group = ActionGroupResource(
         location="global",
-        group_short_name="Admission_Model_Alerts",
+        group_short_name="Model_Alerts",
         enabled=True,
         email_receivers=[
             EmailReceiver(

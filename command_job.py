@@ -1,92 +1,120 @@
-"""Create and submit a command job for College Admissions Model training in Azure ML."""
+"""Command Job Submission Script for College Admissions Model.
 
+This script creates and submits an Azure ML command job to train the
+College Admissions Model. It configures the training job with specified
+hyperparameters, submits it to Azure ML, and polls until completion.
+
+Usage:
+    python command_job.py
+
+Environment Variables:
+    SUBSCRIPTION_ID: Azure subscription ID
+    RESOURCE_GROUP: Azure resource group name
+    WS_NAME: Azure ML workspace name
+"""
 import os
 import time
-from pathlib import Path
-from dotenv import load_dotenv
-from azure.ai.ml import command, Input, MLClient
+
+from azure.ai.ml import Input, MLClient, command
 from azure.identity import DefaultAzureCredential
+from dotenv import load_dotenv
 
-# Define constants that can be imported by other modules
-experiment_name = 'model_training'
-artifact_path_name = "admissions_model"
+from config import (
 
-# Import the name of the test and train datasets
-from data_migration.migrate import train_data_name, test_data_name
+    compute_cluster,
+    experiment_name,
+    custom_environment,
+    artifact_path_name,
+    registered_test_data,
+    registered_train_data,
+    
+)
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Get Azure ML workspace details from environment variables
-subscription_id = os.getenv("SUBSCRIPTION_ID")
-resource_group = os.getenv("RESOURCE_GROUP")
-workspace_name = os.getenv("WS_NAME")
+SUBSCRIPTION_ID = os.getenv("SUBSCRIPTION_ID")
+RESOURCE_GROUP = os.getenv("RESOURCE_GROUP")
+WORKSPACE_NAME = os.getenv("WS_NAME")
+
+
+# Training hyperparameters
+N_ESTIMATORS = 1100
+RANDOM_STATE = 42
+N_JOBS = -1
+MIN_SAMPLES_SPLIT = 20
+MIN_SAMPLES_LEAF = 10
+MAX_FEATURES = "sqrt"
+
+# Job polling interval (seconds)
+POLLING_INTERVAL = 30
+
 
 def main():
-    """Main function to create and submit the command job."""
-    # Authenticate using default Azure credentials
-    credential = DefaultAzureCredential()
+    """Create and submit Azure ML command job for model training.
 
-    # Get a handle to the workspace
-    print(f"Connecting to Azure ML workspace: {workspace_name}")
+    This function performs the following steps:
+        1. Connects to the Azure ML workspace
+        2. Configures the training job with hyperparameters
+        3. Submits the job to Azure ML
+        4. Polls the job status until completion
+        5. Validates successful completion
+
+    Raises:
+        AssertionError: If the job does not complete successfully.
+    """
+    # Connect to Azure ML workspace
+    print(f"Connecting to Azure ML workspace: {WORKSPACE_NAME}")
     ml_client = MLClient(
-        credential=credential,
-        subscription_id=subscription_id,
-        resource_group_name=resource_group,
-        workspace_name=workspace_name
+        credential=DefaultAzureCredential(),
+        subscription_id=SUBSCRIPTION_ID,
+        resource_group_name=RESOURCE_GROUP,
+        workspace_name=WORKSPACE_NAME
     )
-    
-    latest_data_version = max(
-    [int(d.version) for d in ml_client.data.list(name=train_data_name)])
 
-    # Get the latest version of the test data
-    latest_test_data_version = max(
-        [int(d.version) for d in ml_client.data.list(name=test_data_name)])
-
-    # Define the latest version of the registered model for deployment
-    train_data = f"azureml:{train_data_name}:{latest_data_version}"
-
-    # Define the latest version of the registered model for deployment
-    test_data = f"azureml:{test_data_name}:{latest_test_data_version}"
-
-    # Define the command job
+    # Configure the command job
     job = command(
         inputs=dict(
-            train_data=Input(type="mltable", path=train_data),
-            test_data=Input(type="mltable", path=test_data),
-            n_estimators=1100,
-            random_state=42,
-            n_jobs=-1,
-            min_samples_split=20,
-            min_samples_leaf=10,
-            max_features="sqrt",
+            train_data=Input(type="mltable", path=registered_train_data),
+            test_data=Input(type="mltable", path=registered_test_data),
+            n_estimators=N_ESTIMATORS,
+            random_state=RANDOM_STATE,
+            n_jobs=N_JOBS,
+            min_samples_split=MIN_SAMPLES_SPLIT,
+            min_samples_leaf=MIN_SAMPLES_LEAF,
+            max_features=MAX_FEATURES,
             artifact_path_name=artifact_path_name,
         ),
-        code="./model_training",  # location of source code
-        compute="admissions-compute",
-        command="python train.py --train_data ${{inputs.train_data}} --test_data ${{inputs.test_data}} "
-                "--n_estimators ${{inputs.n_estimators}} "
-                "--random_state ${{inputs.random_state}} "
-                "--n_jobs ${{inputs.n_jobs}} "
-                "--min_samples_split ${{inputs.min_samples_split}} "
-                "--min_samples_leaf ${{inputs.min_samples_leaf}} "
-                "--max_features ${{inputs.max_features}} "
-                "--artifact_path_name ${{inputs.artifact_path_name}}",
-        environment="admissions_environment@latest",
+        code="./model_training",
+        compute=compute_cluster,
+        command=(
+            "python train.py "
+            "--train_data ${{inputs.train_data}} "
+            "--test_data ${{inputs.test_data}} "
+            "--n_estimators ${{inputs.n_estimators}} "
+            "--random_state ${{inputs.random_state}} "
+            "--n_jobs ${{inputs.n_jobs}} "
+            "--min_samples_split ${{inputs.min_samples_split}} "
+            "--min_samples_leaf ${{inputs.min_samples_leaf}} "
+            "--max_features ${{inputs.max_features}} "
+            "--artifact_path_name ${{inputs.artifact_path_name}}"
+        ),
+        environment=custom_environment,
         experiment_name=experiment_name,
-        display_name="trained_admissions_model" 
+        display_name="trained_admissions_model"
     )
     
     # Submit the job
     print("Submitting command job to Azure ML...")
     returned_job = ml_client.jobs.create_or_update(job)
     print(f"Job submitted. Job name: {returned_job.name}")
-    
-    # Get a URL for monitoring the job
+
+    # Get monitoring URL
     studio_url = returned_job.studio_url
     print(f"Monitor your job at {studio_url}")
 
-    # Poll the job status until completion
+    # Poll job status until completion
     print("\nPolling job status...")
     while returned_job.status not in [
         "Completed",
@@ -94,16 +122,17 @@ def main():
         "Canceled",
         "NotResponding",
     ]:
-        time.sleep(30)
+        time.sleep(POLLING_INTERVAL)
         returned_job = ml_client.jobs.get(returned_job.name)
         print(f"Latest status: {returned_job.status}")
 
-    # Assert job completed successfully
+    # Validate job completed successfully
     assert returned_job.status == "Completed", (
         f"Job ended with status: {returned_job.status}. "
         f"Check Azure ML Studio for details."
     )
-    print(f"\n✓ Training job completed successfully!")
+    print("\n✓ Training job completed successfully!")
+
 
 if __name__ == "__main__":
     main()

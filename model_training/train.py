@@ -1,37 +1,51 @@
-
-"""
-College Admissions Classification Model Training Script.
+"""College Admissions Classification Model Training Script.
 
 This script trains a Random Forest classifier to predict college admission decisions
 based on applicant data. It loads training and testing datasets, preprocesses the data,
-trains the model, evaluates its performance, and saves the trained model.
+trains the model, evaluates its performance, and logs the model to MLflow.
 
+Usage:
+    python train.py --train_data <path> --test_data <path> --n_estimators <int>
+
+Command Line Arguments:
+    --train_data: Path to training data MLTable directory
+    --test_data: Path to test data MLTable directory
+    --n_estimators: Number of trees in the random forest
+    --random_state: Random state for reproducibility
+    --n_jobs: Number of CPU cores to use
+    --min_samples_split: Minimum samples required to split a node
+    --min_samples_leaf: Minimum samples required at a leaf node
+    --max_features: Number of features for best split
+    --artifact_path_name: Name of the registered model
 """
-
-import os
-import mlflow
 import argparse
+from pathlib import Path
+
+import mlflow
+import mlflow.sklearn
+import mltable
 import numpy as np
 import pandas as pd
-import mltable
-import mlflow.sklearn
-from pathlib import Path
 from mlflow.models.signature import infer_signature
-from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
     roc_auc_score,
 )
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.compose import ColumnTransformer
 
 
 def parse_args():
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser(
         description="Train a Random Forest classifier for college admissions."
     )
@@ -92,27 +106,23 @@ def parse_args():
 
 
 def load_data(train_path, test_path):
-    """
-    Load training and testing datasets from MLTable data assets.
-    
+    """Load training and testing datasets from MLTable data assets.
+
     Args:
-        train_path (str): Path to training data MLTable directory
-        test_path (str): Path to test data MLTable directory
-        
+        train_path (str): Path to training data MLTable directory.
+        test_path (str): Path to test data MLTable directory.
+
     Returns:
-        tuple: (X_train, y_train, X_test, y_test) - training and testing data splits
+        tuple: (X_train, y_train, X_test, y_test) - Training and testing data splits.
     """
-    # Convert to absolute paths if relative paths are provided (For Local Training)
-    # This ensures the script works regardless of execution directory
+    # Convert to absolute paths if relative paths are provided
     train_path_obj = Path(train_path)
     if not train_path_obj.is_absolute():
-        # Get project root (parent of model_training directory)
         project_root = Path(__file__).parent.parent
         train_path_obj = project_root / train_path
-    
+
     test_path_obj = Path(test_path)
     if not test_path_obj.is_absolute():
-        # Get project root (parent of model_training directory)
         project_root = Path(__file__).parent.parent
         test_path_obj = project_root / test_path
     
@@ -120,65 +130,63 @@ def load_data(train_path, test_path):
     print(f"Loading training data from MLTable: {train_path_obj}")
     train_tbl = mltable.load(str(train_path_obj))
     train_df = train_tbl.to_pandas_dataframe()
-    
+
     # Load test data from MLTable
     print(f"Loading test data from MLTable: {test_path_obj}")
     test_tbl = mltable.load(str(test_path_obj))
     test_df = test_tbl.to_pandas_dataframe()
-    
+
     # Extract target variable
     y_train = train_df["Accept"].values
     y_test = test_df["Accept"].values
-    
+
     # Drop target variable from features
     X_train = train_df.drop("Accept", axis=1)
     X_test = test_df.drop("Accept", axis=1)
-    
+
     return X_train, y_train, X_test, y_test
 
 
 def train_model(X_train, y_train, n_estimators=100, max_depth=None, random_state=42):
-    """
-    Train a Random Forest classifier.
-    
+    """Train a Random Forest classifier.
+
     Args:
-        X_train (pd.DataFrame): Training features
-        y_train (np.array): Training labels
-        n_estimators (int): Number of trees in the forest
-        max_depth (int): Maximum depth of the trees
-        random_state (int): Random state for reproducibility
-        
+        X_train (pd.DataFrame): Training features.
+        y_train (np.array): Training labels.
+        n_estimators (int): Number of trees in the forest.
+        max_depth (int): Maximum depth of the trees.
+        random_state (int): Random state for reproducibility.
+
     Returns:
-        RandomForestClassifier: Trained model
+        RandomForestClassifier: Trained model.
     """
     print(f"Training Random Forest classifier with {n_estimators} trees...")
     model = RandomForestClassifier(
         n_estimators=n_estimators,
         max_depth=max_depth,
         random_state=random_state,
-        n_jobs=-1  # Use all available cores
+        n_jobs=-1
     )
-    
+
     model.fit(X_train, y_train)
     return model
 
 
 def evaluate_model(model, X_test, y_test):
-    """
-    Evaluate the trained model on test data.
-    
+    """Evaluate the trained model on test data.
+
     Args:
-        model: Trained model (can be a Pipeline or classifier)
-        X_test (pd.DataFrame): Test features
-        y_test (np.array): Test labels
-        
+        model: Trained model (can be a Pipeline or classifier).
+        X_test (pd.DataFrame): Test features.
+        y_test (np.array): Test labels.
+
     Returns:
-        dict: Dictionary of evaluation metrics
+        dict: Dictionary of evaluation metrics.
     """
     print("Evaluating model performance...")
     y_pred = model.predict(X_test)
     y_prob = model.predict_proba(X_test)[:, 1]
-    
+
     # Calculate metrics
     metrics = {
         "accuracy": accuracy_score(y_test, y_pred),
@@ -187,22 +195,32 @@ def evaluate_model(model, X_test, y_test):
         "f1": f1_score(y_test, y_pred),
         "roc_auc": roc_auc_score(y_test, y_prob)
     }
-    
+
     # Print metrics
     print("\nModel Performance Metrics:")
     for metric_name, metric_value in metrics.items():
         print(f"{metric_name}: {metric_value:.4f}")
-    
+
     return metrics
 
+
 def main():
-    """Main function to orchestrate the training process."""
+    """Main function to orchestrate the training process.
+
+    This function:
+        1. Parses command line arguments
+        2. Sets up MLflow tracking
+        3. Loads and preprocesses data
+        4. Trains a Random Forest classifier pipeline
+        5. Evaluates model performance
+        6. Logs model and metrics to MLflow
+    """
     # Parse command line arguments
     args = parse_args()
-    
+
     # Set up MLflow tracking
     mlflow.start_run()
-    
+
     # Log parameters
     print("Logging parameters to MLflow...")
     params = {
@@ -216,7 +234,7 @@ def main():
         "max_features": args.max_features
     }
     mlflow.log_params(params)
-    
+
     # Load data
     X_train, y_train, X_test, y_test = load_data(
         args.train_data, args.test_data
@@ -224,30 +242,30 @@ def main():
     
     # Define numerical and categorical features
     numerical_features = [
-        'GPA', 'SAT', 'Age', 'ExtracurricularScore', 
-        'EssayScore', 'RecommendationScore', 'InterviewScore', 'FinancialAid'
+        "GPA", "SAT", "Age", "ExtracurricularScore",
+        "EssayScore", "RecommendationScore", "InterviewScore", "FinancialAid"
     ]
-    
-    # Get categorical features (all columns except numerical ones and target)
-    categorical_features = [col for col in X_train.columns if col not in numerical_features]
-    
-    # Create preprocessing pipeline using ColumnTransformer
-    # This scales numerical features and passes through categorical features unchanged
+
+    # Get categorical features (all columns except numerical ones)
+    categorical_features = [
+        col for col in X_train.columns if col not in numerical_features
+    ]
+
+    # Create preprocessing pipeline
     print("Creating preprocessing pipeline with ColumnTransformer...")
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', StandardScaler(), numerical_features),
-            ('cat', 'passthrough', categorical_features)
+            ("num", StandardScaler(), numerical_features),
+            ("cat", "passthrough", categorical_features)
         ],
         verbose_feature_names_out=False
     )
     
     # Create a pipeline that combines preprocessing and classification
-    # This allows the model to handle raw input data directly
     print("Creating full pipeline with preprocessor and classifier...")
     pipeline_model = Pipeline([
-        ('preprocessor', preprocessor),
-        ('classifier', RandomForestClassifier(
+        ("preprocessor", preprocessor),
+        ("classifier", RandomForestClassifier(
             n_estimators=args.n_estimators,
             random_state=args.random_state,
             n_jobs=args.n_jobs,
@@ -256,43 +274,43 @@ def main():
             max_features=args.max_features
         ))
     ])
-    
-    # Fit the entire pipeline on raw training data
+
+    # Fit the entire pipeline on training data
     print(f"Training pipeline with {args.n_estimators} trees...")
     pipeline_model.fit(X_train, y_train)
-    
-    # Evaluate model using the pipeline on raw test data
-    # This ensures the evaluation matches how the model will be used in production
+
+    # Evaluate model performance
     metrics = evaluate_model(pipeline_model, X_test, y_test)
-    
+
     # Log metrics to MLflow
     print("Logging metrics to MLflow...")
     mlflow.log_metrics(metrics)
     
-    # Log model to MLflow manually
+    # Log model to MLflow
     print("Logging model to MLflow...")
-    
-    # Generate model signature using RAW input data and pipeline model predictions
-    # This is critical for the Responsible AI Dashboard to work correctly
+
+    # Generate model signature
     signature = infer_signature(X_test, pipeline_model.predict(X_test))
-    
-    # Generate a sample input example using RAW input data
-    # This shows consumers of the model what format the input should be in
+
+    # Generate sample input example
     input_example = X_test.iloc[0:1]
-    
-    # Log the PIPELINE model with signature and input example
-    print(f"Logging pipeline model to MLflow with artifact path: {args.artifact_path_name}")
+
+    # Log the pipeline model
+    print(
+        f"Logging pipeline model to MLflow with artifact path: "
+        f"{args.artifact_path_name}"
+    )
     mlflow.sklearn.log_model(
-        sk_model=pipeline_model,  # Log the pipeline instead of just the classifier
-        signature=signature,      # Signature based on raw input data
-        input_example=input_example,  # Example using raw input data
+        sk_model=pipeline_model,
+        signature=signature,
+        input_example=input_example,
         artifact_path=args.artifact_path_name,
     )
-    
+
     # End the MLflow run
     mlflow.end_run()
-    
-    print("Training completed successfully!")
+
+    print("✓ Training completed successfully!")
 
 
 if __name__ == "__main__":

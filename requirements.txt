@@ -1,11 +1,19 @@
-mlflow
+# Local Package
+-e .
+
+# Azure Packages
+azure-ai-ml
+azure-identity
+azure-mgmt-monitor
 azureml-mlflow
+
+# Utilities
+dotenv
+mlflow
 mltable
+
+# Data Science Libraries
 numpy
 pandas
 scikit-learn
 scipy
-azure-mgmt-monitor
-azure-ai-ml
-azure-identity
-dotenv

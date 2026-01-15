@@ -1,30 +1,38 @@
-"""RAI Dashboard Analysis Script.
+"""RAI Dashboard Analysis Script for College Admissions Model.
 
 This script finds the latest successfully completed Responsible AI Dashboard
-pipeline job and downloads its ux.json output for analysis.
-"""
+pipeline job, downloads its ux.json output, and performs validation analysis
+on sensitive features using SHAP values and distribution checks.
 
+Usage:
+    python model_analysis.py
+
+Environment Variables:
+    SUBSCRIPTION_ID: Azure subscription ID
+    RESOURCE_GROUP: Azure resource group name
+    WS_NAME: Azure ML workspace name
+"""
+import json
 import os
 import sys
-import json
 from pathlib import Path
 from statistics import mean, stdev
 
-from dotenv import load_dotenv
 from azure.ai.ml import MLClient
 from azure.identity import DefaultAzureCredential
+from dotenv import load_dotenv
 
-# Get path to parent directory
-parent_dir = Path(__file__).parent.parent
-sys.path.append(str(parent_dir))
-
-# Import experiment name from responsible.py
-from Responsible_AI_Insights.responsible import EXPERIMENT_NAME
+from config import experiment_name
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Constants
+# Get Azure ML workspace details from environment variables
+SUBSCRIPTION_ID = os.getenv("SUBSCRIPTION_ID")
+RESOURCE_GROUP = os.getenv("RESOURCE_GROUP")
+WORKSPACE_NAME = os.getenv("WS_NAME")
+
+# RAI analysis configuration
 DOWNLOAD_PATH = "./rai_outputs"
 OUTPUT_NAME = "ux_json"
 SHAP_THRESHOLD = 5.4  # Threshold for sensitive feature SHAP values
@@ -50,16 +58,16 @@ RACE_STDEV_THRESHOLD = 5.0  # Number of standard deviations for outlier detectio
 
 def find_latest_job_in_experiment(ml_client, experiment_name):
     """Find the most recent job in the specified experiment.
-    
+
     Args:
-        ml_client: Azure ML client
-        experiment_name: Name of the experiment to search in
-        
+        ml_client: Azure ML client instance.
+        experiment_name (str): Name of the experiment to search in.
+
     Returns:
-        Latest job object from the specified experiment
-        
+        Job: Latest job object from the specified experiment.
+
     Raises:
-        RuntimeError: If no jobs are found in the experiment
+        RuntimeError: If no jobs are found in the experiment.
     """
     print(f"Searching for jobs in experiment: {experiment_name}")
     filtered_jobs = []
@@ -84,12 +92,12 @@ def find_latest_job_in_experiment(ml_client, experiment_name):
 
 def validate_job_completion(job):
     """Validate that the job has completed successfully.
-    
+
     Args:
-        job: Azure ML job object to validate
-        
+        job: Azure ML job object to validate.
+
     Raises:
-        RuntimeError: If job is not completed successfully
+        RuntimeError: If job is not completed successfully.
     """
     # Check job status
     status = str(getattr(job, "status", "unknown")).lower()
@@ -105,14 +113,19 @@ def validate_job_completion(job):
     print(f"✓ Job '{job.name}' completed successfully")
 
 
-def download_ux_json(ml_client, job, output_name=OUTPUT_NAME, download_path=DOWNLOAD_PATH):
+def download_ux_json(ml_client, job, output_name=OUTPUT_NAME,
+                     download_path=DOWNLOAD_PATH):
     """Download ux.json output from the completed RAI pipeline job.
-    
+
     Args:
-        ml_client: Azure ML client
-        job: Completed pipeline job
-        output_name: Name of the output to download (default: 'ux_json')
-        download_path: Local path to download the output (default: './rai_outputs')
+        ml_client: Azure ML client instance.
+        job: Completed pipeline job.
+        output_name (str): Name of the output to download (default: 'ux_json').
+        download_path (str): Local path to download the output
+                            (default: './rai_outputs').
+
+    Raises:
+        RuntimeError: If download fails.
     """
     print(f"\nDownloading '{output_name}' output from job: {job.name}")
     print(f"Download path: {download_path}")
@@ -132,15 +145,16 @@ def download_ux_json(ml_client, job, output_name=OUTPUT_NAME, download_path=DOWN
 
 def parse_ux_json(download_path=DOWNLOAD_PATH):
     """Parse the downloaded ux.json file and extract globalFeatureImportance data.
-    
+
     Args:
-        download_path: Path where ux.json was downloaded
-        
+        download_path (str): Path where ux.json was downloaded.
+
     Returns:
-        tuple: (feature_list, scores) - Lists of feature names and their SHAP scores
-        
+        tuple: (feature_list, scores) - Lists of feature names and their
+               SHAP scores.
+
     Raises:
-        RuntimeError: If ux.json file not found or parsing fails
+        RuntimeError: If ux.json file not found or parsing fails.
     """
     print("\nParsing ux.json for feature importance analysis...")
     
@@ -160,7 +174,7 @@ def parse_ux_json(download_path=DOWNLOAD_PATH):
     for json_file in ux_json_files:
         try:
             print(f"  Checking: {json_file.name}")
-            with open(json_file, 'r', encoding='utf-8') as f:
+            with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
             # Navigate to globalFeatureImportance in the nested structure
@@ -212,32 +226,38 @@ def parse_ux_json(download_path=DOWNLOAD_PATH):
     )
 
 
-def validate_sensitive_features(feature_list, scores, sensitive_features=SENSITIVE_FEATURES, 
-                                threshold=SHAP_THRESHOLD, race_features=RACE_FEATURES, 
-                                stdev_threshold=RACE_STDEV_THRESHOLD):
-    """Validate sensitive features using SHAP threshold and race feature distribution.
-    
+def validate_sensitive_features(
+    feature_list,
+    scores,
+    sensitive_features=SENSITIVE_FEATURES,
+    threshold=SHAP_THRESHOLD,
+    race_features=RACE_FEATURES,
+    stdev_threshold=RACE_STDEV_THRESHOLD
+):
+    """Validate sensitive features using SHAP threshold and race distribution.
+
     This function performs two independent validation checks:
-    1. SHAP Threshold Check: Ensures all sensitive features have SHAP values within
-       the acceptable threshold (±threshold).
-    2. Race Feature Distribution Check: Ensures race feature SHAP values don't have
-       outliers that deviate too far from the mean, which could indicate discrimination
-       or privilege in model predictions.
-    
+    1. SHAP Threshold Check: Ensures all sensitive features have SHAP values
+       within the acceptable threshold (±threshold).
+    2. Race Feature Distribution Check: Ensures race feature SHAP values don't
+       have outliers that deviate too far from the mean, which could indicate
+       discrimination or privilege in model predictions.
+
     Args:
-        feature_list: List of feature names
-        scores: List of SHAP scores corresponding to features
-        sensitive_features: List of sensitive feature names to check
-        threshold: Absolute SHAP value threshold (default: 0.4)
-        race_features: List of race/ethnicity feature names
-        stdev_threshold: Number of standard deviations for outlier detection (default: 2.0)
-        
+        feature_list (list): List of feature names.
+        scores (list): List of SHAP scores corresponding to features.
+        sensitive_features (list): List of sensitive feature names to check.
+        threshold (float): Absolute SHAP value threshold (default: 5.4).
+        race_features (list): List of race/ethnicity feature names.
+        stdev_threshold (float): Number of standard deviations for outlier
+                                detection (default: 5.0).
+
     Returns:
-        bool: True if all validations pass, False otherwise
+        bool: True if all validations pass, False otherwise.
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("Sensitive Feature SHAP Value Analysis")
-    print("="*80)
+    print("=" * 80)
     print(f"Threshold: ±{threshold}")
     print(f"Checking {len(sensitive_features)} sensitive features...\n")
     
@@ -322,9 +342,9 @@ def validate_sensitive_features(feature_list, scores, sensitive_features=SENSITI
     # ========================================================================
     # FINAL VALIDATION SUMMARY
     # ========================================================================
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("VALIDATION SUMMARY")
-    print("="*80)
+    print("=" * 80)
     
     # Determine overall pass/fail
     rai_pass = shap_threshold_pass and race_distribution_pass
@@ -356,7 +376,7 @@ def validate_sensitive_features(feature_list, scores, sensitive_features=SENSITI
         print("⊘ Race Distribution Check: SKIPPED")
         print("  Insufficient race features for distribution analysis.")
     
-    print("\n" + "-"*80)
+    print("\n" + "-" * 80)
     if rai_pass:
         print("✓ OVERALL RAI_PASS = True")
         print("All validation checks passed successfully.")
@@ -368,40 +388,49 @@ def validate_sensitive_features(feature_list, scores, sensitive_features=SENSITI
         if not race_distribution_pass:
             failed_checks.append("Race Distribution")
         print(f"Failed validation(s): {', '.join(failed_checks)}")
-    print("="*80)
+    print("=" * 80)
     
     return rai_pass
 
 
 def main():
-    """Main function to find and download RAI Dashboard outputs."""
-    print("="*80)
+    """Find, download, and analyze RAI Dashboard outputs.
+
+    This function performs the following steps:
+        1. Connects to Azure ML workspace
+        2. Finds the latest job in the RAI experiment
+        3. Validates job completion status
+        4. Downloads ux.json output
+        5. Parses feature importance data
+        6. Validates sensitive features against thresholds
+        7. Sets Azure Pipeline output variable for deployment gate
+
+    Returns:
+        bool: True if RAI validation passes, False otherwise.
+
+    Raises:
+        RuntimeError: If job not found, not completed, or download fails.
+        SystemExit: Exits with code 1 on any error.
+    """
+    print("=" * 80)
     print("RAI Dashboard Analysis - Output Download")
-    print("="*80)
-    
-    # Authenticate to Azure ML
+    print("=" * 80)
+
+    # Connect to Azure ML workspace
+    print(f"\nConnecting to Azure ML workspace: {WORKSPACE_NAME}")
     credential = DefaultAzureCredential()
-    
-    # Get Azure ML workspace details from environment variables
-    subscription_id = os.getenv("SUBSCRIPTION_ID")
-    resource_group = os.getenv("RESOURCE_GROUP")
-    workspace_name = os.getenv("WS_NAME")
-    
-    print(f"\nConnecting to Azure ML workspace: {workspace_name}")
-    
-    # Create ML client
     ml_client = MLClient(
         credential=credential,
-        subscription_id=subscription_id,
-        resource_group_name=resource_group,
-        workspace_name=workspace_name
+        subscription_id=SUBSCRIPTION_ID,
+        resource_group_name=RESOURCE_GROUP,
+        workspace_name=WORKSPACE_NAME
     )
-    
-    print(f"✓ Connected to workspace: {workspace_name}\n")
+
+    print(f"✓ Connected to workspace: {WORKSPACE_NAME}\n")
     
     try:
         # Find the latest job in the RAI experiment
-        latest_job = find_latest_job_in_experiment(ml_client, EXPERIMENT_NAME)
+        latest_job = find_latest_job_in_experiment(ml_client, experiment_name)
         
         # Validate that the job completed successfully
         validate_job_completion(latest_job)
@@ -416,29 +445,30 @@ def main():
         rai_pass = validate_sensitive_features(feature_list, scores)
         
         # Set Azure Pipeline output variable for use in subsequent stages
-        if rai_pass==True:
-            print(f"##vso[task.setvariable variable=rai_pass;isOutput=true]true")
+        if rai_pass:
+            print("##vso[task.setvariable variable=rai_pass;isOutput=true]true")
             print("RAI Gate: PASSED")
         else:
-            print(f"##vso[task.setvariable variable=rai_pass;isOutput=true]false")
+            print("##vso[task.setvariable variable=rai_pass;isOutput=true]false")
             print("RAI Gate: FAILED")
-        
-        print("\n" + "="*80)
+
+        print("\n" + "=" * 80)
         print("RAI Dashboard Analysis Complete")
-        print("="*80)
+        print("=" * 80)
         print(f"Job name: {latest_job.name}")
-        print(f"Experiment: {EXPERIMENT_NAME}")
+        print(f"Experiment: {experiment_name}")
         print(f"Output location: {DOWNLOAD_PATH}")
         print(f"RAI Validation: {'PASSED' if rai_pass else 'FAILED'}")
-        print("="*80)
+        print("=" * 80)
         return rai_pass
-        
+
     except RuntimeError as e:
         print(f"\n❌ Error: {str(e)}")
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ Unexpected error: {str(e)}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

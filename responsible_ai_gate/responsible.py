@@ -1,37 +1,46 @@
-"""Responsible AI Dashboard Creation Script.
+"""Responsible AI Dashboard Creation Script for College Admissions Model.
 
 This script creates a Responsible AI Insights dashboard for the college admissions
 classification model. It constructs a pipeline with explanation, causal analysis,
-and error analysis components.
+and error analysis components, then submits it to Azure ML.
+
+Usage:
+    python responsible.py
+
+Environment Variables:
+    SUBSCRIPTION_ID: Azure subscription ID
+    RESOURCE_GROUP: Azure resource group name
+    WS_NAME: Azure ML workspace name
 """
-
-import os
-import sys
 import json
-import uuid
+import os
 import time
-from pathlib import Path
+import uuid
 
-from dotenv import load_dotenv
-from azure.ai.ml import MLClient, dsl, Input, Output
+from azure.ai.ml import Input, MLClient, Output, dsl
 from azure.ai.ml.constants import AssetTypes
 from azure.ai.ml.entities import PipelineJob
 from azure.identity import DefaultAzureCredential
+from dotenv import load_dotenv
 
-# Get path to parent directory
-parent_dir = Path(__file__).parent.parent
-sys.path.append(str(parent_dir))
-
-# Import the name of the registered model in Azure ML
-from command_job import artifact_path_name
-
-# Import the name of the test and train datasets
-from data_migration.migrate import train_data_name, test_data_name
+from config import (
+    compute_cluster,
+    custom_environment,
+    artifact_path_name,
+    rai_experiment_name,
+    registered_test_data,
+    registered_train_data,
+)
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Constants
+# Get Azure ML workspace details from environment variables
+SUBSCRIPTION_ID = os.getenv("SUBSCRIPTION_ID")
+RESOURCE_GROUP = os.getenv("RESOURCE_GROUP")
+WORKSPACE_NAME = os.getenv("WS_NAME")
+
+# RAI pipeline configuration
 TARGET_COLUMN_NAME = "Accept"
 CATEGORICAL_FEATURES = json.dumps([
     "Gender",
@@ -44,22 +53,42 @@ CATEGORICAL_FEATURES = json.dumps([
     "LegacyStatus",
     "FirstGeneration"
 ])
-TREATMENT_FEATURES = json.dumps(["GPA", "SAT",  "Gender", "Race_American_Indian_or_Alaska_Native", "Race_Asian", "Race_Black_or_African_American", "Race_Native_Hawaiian_or_Other_Pacific_Islander", "Race_White", "Ethnicity_Hispanic_or_Latino", "LegacyStatus", "FirstGeneration"])
+TREATMENT_FEATURES = json.dumps([
+    "GPA",
+    "SAT",
+    "Gender",
+    "Race_American_Indian_or_Alaska_Native",
+    "Race_Asian",
+    "Race_Black_or_African_American",
+    "Race_Native_Hawaiian_or_Other_Pacific_Islander",
+    "Race_White",
+    "Ethnicity_Hispanic_or_Latino",
+    "LegacyStatus",
+    "FirstGeneration"
+])
+
+# Azure ML configuration
 RAI_LABEL = "latest"
-TIMEOUT = 7200  # Timeout for each component job in seconds (2 hours)
-EXPERIMENT_NAME = "Responsible_AI_Insights_Admissions_Model"
+RAI_REGISTRY_NAME = "azureml"
+RAI_REGISTRY_LOCATION = "eastus"
+
+# Timeout configuration
+TIMEOUT = 300  # Timeout for each component job in seconds (2 hours)
+POLLING_INTERVAL = 30  # Job status polling interval in seconds
 
 
 def submit_and_wait(ml_client, pipeline_job) -> PipelineJob:
-    """
-    Submit pipeline job and wait for completion.
-    
+    """Submit pipeline job and wait for completion.
+
     Args:
-        ml_client: Azure ML client instance
-        pipeline_job: Pipeline job to submit
-        
+        ml_client: Azure ML client instance.
+        pipeline_job: Pipeline job to submit.
+
     Returns:
-        PipelineJob: Completed pipeline job
+        PipelineJob: Completed pipeline job.
+
+    Raises:
+        AssertionError: If job does not complete successfully.
     """
     created_job = ml_client.jobs.create_or_update(pipeline_job)
     assert created_job is not None
@@ -73,12 +102,16 @@ def submit_and_wait(ml_client, pipeline_job) -> PipelineJob:
         "Canceled",
         "NotResponding",
     ]:
-        time.sleep(30)
+        time.sleep(POLLING_INTERVAL)
         created_job = ml_client.jobs.get(created_job.name)
         print(f"Latest status: {created_job.status}")
-    
-    assert created_job.status == "Completed"
+
+    assert created_job.status == "Completed", (
+        f"Pipeline job ended with status: {created_job.status}. "
+        f"Check Azure ML Studio for details."
+    )
     return created_job
+
 
 def create_rai_pipeline(
     rai_constructor_component,
@@ -91,27 +124,28 @@ def create_rai_pipeline(
     train_data_path,
     test_data_path
 ):
-    """
-    Create RAI classification pipeline with all components.
-    
+    """Create RAI classification pipeline with all components.
+
     Args:
-        rai_constructor_component: RAI constructor component
-        rai_explanation_component: RAI explanation component
-        rai_causal_component: RAI causal analysis component
-        rai_erroranalysis_component: RAI error analysis component
-        rai_gather_component: RAI gather component
-        model_id: Model identifier string
-        model_path: Path to MLflow model
-        train_data_path: Path to training MLTable
-        test_data_path: Path to test MLTable
-        
+        rai_constructor_component: RAI constructor component.
+        rai_explanation_component: RAI explanation component.
+        rai_causal_component: RAI causal analysis component.
+        rai_erroranalysis_component: RAI error analysis component.
+        rai_gather_component: RAI gather component.
+        model_id (str): Model identifier string.
+        model_path (str): Path to MLflow model.
+        train_data_path (str): Path to training MLTable.
+        test_data_path (str): Path to test MLTable.
+
     Returns:
-        Pipeline function decorated with @dsl.pipeline
+        function: Pipeline function decorated with @dsl.pipeline.
     """
     @dsl.pipeline(
-        compute="admissions-compute",
-        description="Responsible AI Insights pipeline for admissions classification model",
-        experiment_name=EXPERIMENT_NAME,
+        compute=compute_cluster,
+        description=(
+            "Responsible AI Insights pipeline for admissions classification model"
+        ),
+        experiment_name=rai_experiment_name,
     )
     def rai_classification_pipeline():
         # Initiate the RAIInsights
@@ -157,62 +191,56 @@ def create_rai_pipeline(
         rai_gather_job.set_limits(timeout=TIMEOUT)
 
         return {"ux_json": rai_gather_job.outputs.ux_json}
-    
+
     return rai_classification_pipeline
+
+
 def main():
-    """Main function to create and submit RAI Insights dashboard."""
-    # Authenticate to Azure ML
+    """Create and submit RAI Insights dashboard.
+
+    This function performs the following steps:
+        1. Connects to Azure ML workspace
+        2. Retrieves latest model version
+        3. Initializes RAI Insights components from Azure ML registry
+        4. Creates RAI pipeline with all components
+        5. Submits pipeline and waits for completion
+
+    Raises:
+        AssertionError: If pipeline job does not complete successfully.
+    """
+    # Connect to Azure ML workspace
+    print(f"Connecting to Azure ML workspace: {WORKSPACE_NAME}")
     credential = DefaultAzureCredential()
-    
-    # Get Azure ML workspace details from environment variables
-    subscription_id = os.getenv("SUBSCRIPTION_ID")
-    resource_group = os.getenv("RESOURCE_GROUP")
-    workspace_name = os.getenv("WS_NAME")
-    
-    print(f"Connecting to Azure ML workspace: {workspace_name}")
-    
-    # Create ML client
+
     ml_client = MLClient(
         credential=credential,
-        subscription_id=subscription_id,
-        resource_group_name=resource_group,
-        workspace_name=workspace_name
+        subscription_id=SUBSCRIPTION_ID,
+        resource_group_name=RESOURCE_GROUP,
+        workspace_name=WORKSPACE_NAME
     )
-    
-    # Get handle to azureml registry for the RAI built-in components
+
+    # Get handle to Azure ML registry for RAI built-in components
     ml_client_registry = MLClient(
         credential=credential,
-        registry_name="azureml",
-        registry_location="eastus",
+        registry_name=RAI_REGISTRY_NAME,
+        registry_location=RAI_REGISTRY_LOCATION,
     )
-    
-    print("Retrieving latest data and model versions...")
-    
-    # Get the latest version of the train data
-    latest_data_version = max(
-        [int(d.version) for d in ml_client.data.list(name=train_data_name)]
-    )
-    
-    # Get the latest version of the test data
-    latest_test_data_version = max(
-        [int(d.version) for d in ml_client.data.list(name=test_data_name)]
-    )
-    
+
+    print("Retrieving latest model version...")
+
     # Get the latest version of the trained model
     latest_model_version = max(
         [int(m.version) for m in ml_client.models.list(name=artifact_path_name)]
     )
-    
-    # Define data and model paths
-    train_data_path = f"azureml:{train_data_name}:{latest_data_version}"
-    test_data_path = f"azureml:{test_data_name}:{latest_test_data_version}"
+
+    # Define model paths
     model_id = f"{artifact_path_name}:{latest_model_version}"
     model_path = f"azureml:{artifact_path_name}:{latest_model_version}"
-    
-    print(f"Using train data: {train_data_path}")
-    print(f"Using test data: {test_data_path}")
+
+    print(f"Using train data: {registered_train_data}")
+    print(f"Using test data: {registered_test_data}")
     print(f"Using model: {model_id}")
-    
+
     # Initialize RAI Insights components
     print("Initializing RAI Insights components...")
     rai_constructor_component = ml_client_registry.components.get(
@@ -246,13 +274,13 @@ def main():
         rai_gather_component=rai_gather_component,
         model_id=model_id,
         model_path=model_path,
-        train_data_path=train_data_path,
-        test_data_path=test_data_path
+        train_data_path=registered_train_data,
+        test_data_path=registered_test_data
     )
-    
+
     # Construct the RAI Insights pipeline
     insights_pipeline_job = rai_pipeline_func()
-    
+
     # Set output path with unique identifier
     unique_code = str(uuid.uuid4())
     insights_pipeline_job.outputs.ux_json = Output(
@@ -260,20 +288,17 @@ def main():
         mode="upload",
         type="uri_folder",
     )
-    
+
     # Submit the pipeline job
     print("Submitting RAI Insights pipeline job...")
     insights_pipeline_job = submit_and_wait(ml_client, insights_pipeline_job)
-    
-    print("\n" + "="*80)
-    print("RAI Insights Dashboard created successfully!")
+
+    print("\n" + "=" * 80)
+    print("✓ RAI Insights Dashboard created successfully!")
     print(f"Job name: {insights_pipeline_job.name}")
     print(f"Studio URL: {insights_pipeline_job.studio_url}")
-    print("="*80)
+    print("=" * 80)
 
 
 if __name__ == "__main__":
     main()
-
-
-

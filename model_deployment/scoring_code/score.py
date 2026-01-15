@@ -1,16 +1,33 @@
+"""Azure ML Scoring Script for College Admissions Model.
+
+This script provides the init() and run() functions required by Azure ML
+managed online endpoints. It loads the MLflow model and performs inference
+on incoming requests.
+
+Functions:
+    init(): Initializes the model and logger when the container starts.
+    run(raw_data): Performs inference on incoming JSON requests.
+"""
+import json
 import logging
 import os
 import sys
-import json
 import uuid
-import pandas as pd
+
 import mlflow
+import pandas as pd
+
 
 def init():
-    """
+    """Initialize the model and logger when the container starts.
+
     This function is called when the container is initialized/started,
-    typically after create/update of the deployment.
-    Loads the registered MLflow model into memory for inference.
+    typically after create/update of the deployment. It loads the
+    registered MLflow model into memory for inference.
+
+    Global Variables:
+        model: The loaded MLflow model for inference.
+        logger: Logger instance for tracking requests and errors.
     """
     global model
     global logger
@@ -25,8 +42,8 @@ def init():
     
     # Create production-ready formatter
     formatter = logging.Formatter(
-        fmt='%(asctime)s - %(levelname)s - [%(funcName)s] - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        fmt="%(asctime)s - %(levelname)s - [%(funcName)s] - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
     stream_handler.setFormatter(formatter)
     
@@ -38,7 +55,8 @@ def init():
     
     # AZUREML_MODEL_DIR is an environment variable created during deployment
     # It points to the path where the registered model is stored
-    # Azure ML places the model at: /var/azureml-app/azureml-models/{model_name}/{version}/
+    # Azure ML places the model at:
+    # /var/azureml-app/azureml-models/{model_name}/{version}/
     # MLFLOW_FOLDER_NAME is a custom environment variable set in deployment.py
     mlflow_folder_name = os.getenv("MLFLOW_FOLDER_NAME")
     model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), mlflow_folder_name)
@@ -52,33 +70,48 @@ def init():
 
 
 def run(raw_data):
-    """
+    """Perform inference on incoming JSON requests.
+
     This function is called for every invocation of the endpoint to perform
-    the actual scoring/prediction.
-    Extracts data from JSON request using Azure ML standard format,
-    converts to DataFrame, and returns predictions.
-    
+    the actual scoring/prediction. It extracts data from the JSON request
+    using Azure ML standard format, converts to DataFrame, validates columns,
+    and returns predictions.
+
+    Args:
+        raw_data (str): JSON string containing the input data in Azure ML
+                       standard format.
+
+    Returns:
+        str: JSON string containing predictions and request_id on success.
+        tuple: (JSON error string, HTTP status code) on failure.
+
     Expected JSON format (Azure ML standard for MLflow models):
-    {
-        "input_data": {
-            "columns": [
-                "GPA", "SAT", "Age", "Gender_Male", "Gender_Female",
-                "Race_Asian", "Race_Black", "Race_Hispanic", "Race_White", "Race_Other",
-                "ExtracurricularScore", "EssayScore", "RecommendationScore",
-                "InterviewScore", "LegacyStatus", "FirstGeneration", "FinancialAid"
-            ],
-            "data": [
-                [3.57, 1443, 18, 1, 0, 0, 0, 0, 1, 0, 5, 3, 7, 3, 0, 0, 1],
-                [3.03, 1038, 17, 1, 0, 0, 0, 0, 1, 0, 5, 8, 6, 6, 0, 0, 3]
-            ],
-            "index": [0, 1]
+        {
+            "input_data": {
+                "columns": [
+                    "GPA", "SAT", "Age", "Gender",
+                    "EssayScore", "InterviewScore", "ExtracurricularScore",
+                    "RecommendationScore", "LegacyStatus", "FinancialAid",
+                    "FirstGeneration", "Race_American_Indian_or_Alaska_Native",
+                    "Race_Asian", "Race_Black_or_African_American",
+                    "Race_Native_Hawaiian_or_Other_Pacific_Islander",
+                    "Race_White", "Ethnicity_Hispanic_or_Latino"
+                ],
+                "data": [
+                    [3.57, 1443, 18, "Male", 5, 3, 7, 3, 0, 1, 0, 0, 0, 0, 0, 1, 0],
+                    [3.03, 1038, 17, "Female", 5, 8, 6, 6, 0, 1, 0, 0, 1, 0, 0, 0, 0]
+                ],
+                "index": [0, 1]
+            }
         }
-    }
     """
     # Generate unique request ID for traceability
     request_id = str(uuid.uuid4())
     
-    logger.info("[RequestID: %s] Request received for admissions prediction", request_id)
+    logger.info(
+        "[RequestID: %s] Request received for admissions prediction",
+        request_id
+    )
     
     try:
         # Parse the JSON request

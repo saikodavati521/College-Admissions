@@ -1,13 +1,19 @@
-"""
-Register the most recent model from command_job.py output in Azure ML.
+"""Model Registration Script for College Admissions Model.
 
-This script finds the latest job in the specified experiment and registers
-its output as a model in Azure ML using the MLflow runs:/ URI format.
-"""
+This script finds the latest completed job in the specified experiment and
+registers its output as a model in Azure ML using the MLflow runs:/ URI format.
+It resolves the MLflow run ID from the Azure ML job and creates a model
+registration in the Azure ML Model Registry.
 
+Usage:
+    python register.py
+
+Environment Variables:
+    SUBSCRIPTION_ID: Azure subscription ID
+    RESOURCE_GROUP: Azure resource group name
+    WS_NAME: Azure ML workspace name
+"""
 import os
-import sys
-from pathlib import Path
 
 import mlflow
 from azure.ai.ml import MLClient
@@ -17,36 +23,32 @@ from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 from mlflow.tracking import MlflowClient
 
-
-# Add parent directory to path to import command_job.py
-parent_dir = Path(__file__).parent.parent
-sys.path.append(str(parent_dir))
-
-# Now import from command_job after adding the parent directory to sys.path
-from command_job import artifact_path_name, experiment_name
-
+from config import artifact_path_name, experiment_name
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Get Azure ML workspace details from environment variables
-subscription_id = os.getenv("SUBSCRIPTION_ID")
-resource_group = os.getenv("RESOURCE_GROUP")
-workspace_name = os.getenv("WS_NAME")
+SUBSCRIPTION_ID = os.getenv("SUBSCRIPTION_ID")
+RESOURCE_GROUP = os.getenv("RESOURCE_GROUP")
+WORKSPACE_NAME = os.getenv("WS_NAME")
+
+# MLflow search configuration
+MAX_MLFLOW_RUNS = 200
 
 
 def find_latest_job_in_experiment(ml_client, experiment_name):
     """Find the most recent job in the specified experiment.
 
     Args:
-        ml_client: Azure ML client
-        experiment_name: Name of the experiment to search in
+        ml_client: Azure ML client.
+        experiment_name (str): Name of the experiment to search in.
 
     Returns:
-        Latest job object from the specified experiment
+        Job: Latest job object from the specified experiment.
 
     Raises:
-        RuntimeError: If no jobs are found in the experiment
+        RuntimeError: If no jobs are found in the experiment.
     """
     filtered_jobs = []
 
@@ -67,7 +69,18 @@ def find_latest_job_in_experiment(ml_client, experiment_name):
 
 
 def get_mlflow_experiment_id(mlflow_client, experiment_name):
-    """Get the MLflow experiment_id for an Azure ML experiment name."""
+    """Get the MLflow experiment ID for an Azure ML experiment name.
+
+    Args:
+        mlflow_client: MLflow tracking client.
+        experiment_name (str): Name of the experiment.
+
+    Returns:
+        str: MLflow experiment ID.
+
+    Raises:
+        RuntimeError: If the experiment is not found.
+    """
     exp = mlflow.get_experiment_by_name(experiment_name)
     if exp is not None:
         return exp.experiment_id
@@ -85,10 +98,23 @@ def get_mlflow_experiment_id(mlflow_client, experiment_name):
 
 
 def resolve_run_id_for_job(ml_client, latest_job, experiment_name):
-    """Resolve the MLflow run_id corresponding to an Azure ML job.
+    """Resolve the MLflow run ID corresponding to an Azure ML job.
 
-    - Search MLflow runs in the matching MLflow experiment
-    - Match the Azure job name against MLflow run tag values
+    This function:
+        1. Retrieves the MLflow tracking URI from the workspace
+        2. Searches MLflow runs in the matching experiment
+        3. Matches the Azure job name against MLflow run tag values
+
+    Args:
+        ml_client: Azure ML client.
+        latest_job: Latest Azure ML job object.
+        experiment_name (str): Name of the experiment.
+
+    Returns:
+        str: MLflow run ID.
+
+    Raises:
+        RuntimeError: If no matching MLflow run is found.
     """
     workspace = ml_client.workspaces.get(ml_client.workspace_name)
     tracking_uri = workspace.mlflow_tracking_uri
@@ -100,7 +126,7 @@ def resolve_run_id_for_job(ml_client, latest_job, experiment_name):
     runs = mlflow_client.search_runs(
         experiment_ids=[experiment_id],
         order_by=["start_time DESC"],
-        max_results=200,
+        max_results=MAX_MLFLOW_RUNS,
     )
 
     for run in runs:
@@ -116,22 +142,35 @@ def resolve_run_id_for_job(ml_client, latest_job, experiment_name):
 
 
 def main():
-    """Main function to register the model from the most recent job."""
-    if not subscription_id or not resource_group or not workspace_name:
+    """Register the model from the most recent completed job.
+
+    This function performs the following steps:
+        1. Validates environment variables
+        2. Connects to Azure ML workspace
+        3. Finds the latest job in the experiment
+        4. Validates job completion status
+        5. Resolves the MLflow run ID
+        6. Registers the model in Azure ML Model Registry
+
+    Raises:
+        RuntimeError: If environment variables are missing, job is not completed,
+                     or MLflow run cannot be resolved.
+    """
+    if not SUBSCRIPTION_ID or not RESOURCE_GROUP or not WORKSPACE_NAME:
         raise RuntimeError(
             "Missing required environment variables. Ensure your .env contains:\n"
-            "SUBSCRIPTION=...\n"
+            "SUBSCRIPTION_ID=...\n"
             "RESOURCE_GROUP=...\n"
             "WS_NAME=...\n"
         )
 
     # Connect to Azure ML workspace
-    print(f"Connecting to Azure ML workspace: {workspace_name}")
+    print(f"Connecting to Azure ML workspace: {WORKSPACE_NAME}")
     ml_client = MLClient(
         credential=DefaultAzureCredential(),
-        subscription_id=subscription_id,
-        resource_group_name=resource_group,
-        workspace_name=workspace_name
+        subscription_id=SUBSCRIPTION_ID,
+        resource_group_name=RESOURCE_GROUP,
+        workspace_name=WORKSPACE_NAME
     )
 
     # Find the latest job in the experiment
@@ -154,8 +193,6 @@ def main():
     print(f"Resolved MLflow run_id: {run_id}")
 
     # Construct the model path using the MLflow runs:/ URI format
-    # NOTE: artifact_path_name must match the artifact_path used when logging:
-    # mlflow.<flavor>.log_model(..., artifact_path=artifact_path_name)
     model_path = f"runs:/{run_id}/{artifact_path_name}"
     print(f"Registering model '{artifact_path_name}' from:\n  {model_path}")
 
@@ -178,7 +215,7 @@ def main():
 
     # Register the model
     registered_model = ml_client.models.create_or_update(model)
-    print("Model registered successfully!")
+    print("\n✓ Model registered successfully!")
     print(f"  Name: {registered_model.name}")
     print(f"  Version: {registered_model.version}")
     print(f"  Description: {registered_model.description}")
@@ -186,4 +223,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
