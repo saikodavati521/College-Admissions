@@ -99,7 +99,7 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                python command_job.py
+                python model_training/command_job.py
             env:
               RESOURCE_GROUP: $(azureResourceGroup)
               WS_NAME: $(azureWorkspaceName)
