@@ -76,8 +76,8 @@ def main():
     # Configure the command job
     job = command(
         inputs=dict(
-            train_data=Input(type="mltable", path=registered_train_data),
-            test_data=Input(type="mltable", path=registered_test_data),
+            train_data=Input(type="mltable", path="azureml:admissions-train-data:latest"),
+            test_data=Input(type="mltable", path="azureml:admissions-test-data:latest"),
             n_estimators=N_ESTIMATORS,
             random_state=RANDOM_STATE,
             n_jobs=N_JOBS,

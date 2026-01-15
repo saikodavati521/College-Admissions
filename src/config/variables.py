@@ -10,12 +10,12 @@ Usage:
 # =============================================================================
 # Data Migration
 # =============================================================================
-train_data_name = "admissions-training-data"
-test_data_name = "admissions-testing-data"
+train_data_name = "admissions-train-data"
+test_data_name = "admissions-test-data"
 
 # Registered data assets (latest versions)
-registered_train_data = "azureml:admissions-training-data:latest"
-registered_test_data = "azureml:admissions-testing-data:latest"
+registered_train_data = f"azureml:admissions-train-data:latest"
+registered_test_data = f"azureml:admissions-test-data:latest"
 
 
 # =============================================================================
