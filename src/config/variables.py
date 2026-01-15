@@ -22,7 +22,7 @@ registered_test_data = f"azureml:{test_data_name}:latest"
 # Environment Configuration
 # =============================================================================
 custom_env_name = "admissions_environment"
-custom_environment = f"{custom_env_name}@latest"
+custom_environment = f"azureml:{custom_env_name}@latest"
 
 
 # =============================================================================
