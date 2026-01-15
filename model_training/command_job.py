@@ -100,7 +100,7 @@ def main():
             "--max_features ${{inputs.max_features}} "
             "--artifact_path_name ${{inputs.artifact_path_name}}"
         ),
-        environment="azureml:admissions_environment:latest",
+        environment=custom_environment,
         experiment_name=experiment_name,
         display_name="trained_admissions_model"
     )
