@@ -14,8 +14,8 @@ train_data_name = "admissions-train-data"
 test_data_name = "admissions-test-data"
 
 # Registered data assets (latest versions)
-registered_train_data = f"azureml:{train_data_name}:latest"
-registered_test_data = f"azureml:{test_data_name}:latest"
+registered_train_data = "azureml:admissions-train-data:latest"
+registered_test_data = "azureml:admissions-test-data:latest"
 
 
 # =============================================================================
