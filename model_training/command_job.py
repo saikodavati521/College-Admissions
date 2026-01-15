@@ -86,7 +86,7 @@ def main():
             max_features=MAX_FEATURES,
             artifact_path_name=artifact_path_name,
         ),
-        code="./train_code",
+        code="train_code",
         compute=compute_cluster,
         command=(
             "python train.py "
