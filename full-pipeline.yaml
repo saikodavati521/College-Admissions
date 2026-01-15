@@ -11,18 +11,18 @@ variables:
   # Azure ML workspace targeting variables
   azureResourceGroup: 'rg-admissions'
   azureWorkspaceName: 'Admissions-Workspace'
-  # Service connection name for Azure authentication
-  azureServiceConnection: 'Azure-ML-Admissions-Connection'  # TODO: Replace with your actual service connection name
+  alert_email: 'michael.spurgeon@sweetrush.com'  
+  azureServiceConnection: 'Azure-ML-Admissions-Connection'
 
 stages:
 # ============================================================================
 # TRAIN STAGE
 # ============================================================================
 - stage: Train
-  displayName: 'Train Stage - Model Training and RAI Validation'
+  displayName: 'Train Stage'
   jobs:
   - job: TrainJob
-    displayName: 'Train Job - Model Training and RAI Validation'
+    displayName: 'Train Job - Model Training and RAI Gated Evaluation'
     pool:
       vmImage: 'ubuntu-latest'
     
@@ -45,9 +45,9 @@ stages:
             echo "##vso[task.setvariable variable=subscription_id]$azure_subscription_id"
       
       - task: UsePythonVersion@0
-        displayName: 'Use Python 3.9'
+        displayName: 'Use Python 3.10'
         inputs:
-          versionSpec: '3.9'
+          versionSpec: '3.10'
           addToPath: true
       
       - script: |
@@ -101,7 +101,7 @@ stages:
 
       # Step 4: Register Model
       - task: AzureCLI@2
-        displayName: 'Register Model'
+        displayName: '4. Register Model'
         inputs:
           azureSubscription: $(azureServiceConnection)
           scriptType: 'bash'
@@ -115,7 +115,7 @@ stages:
 
       # Responsible AI Gate
       - task: AzureCLI@2
-        displayName: 'Generate Responsible AI Dashboard'
+        displayName: '5. Generate Responsible AI Dashboard'
         inputs:
           azureSubscription: $(azureServiceConnection)
           scriptType: 'bash'
@@ -128,7 +128,7 @@ stages:
           SUBSCRIPTION_ID: $(subscription_id)
 
       - task: AzureCLI@2
-        displayName: 'RAI Analysis & Gate'
+        displayName: '6. RAI Gate (Analyze RAI Insights)'
         inputs:
           azureSubscription: $(azureServiceConnection)
           scriptType: 'bash'
@@ -146,12 +146,12 @@ stages:
 # DEPLOY STAGE
 # ============================================================================
 - stage: Deploy
-  displayName: 'Deploy Stage - Model Deployment'
+  displayName: 'Deploy Stage'
   dependsOn: Train
-  condition: and(succeeded(), eq(stageDependencies.Train.TrainJob.outputs['raiGate.rai_pass'], 'true'))
+  condition: and(succeeded(), eq(stageDependencies.Train.outputs['TrainJob.raiGate.rai_pass'], 'true'))
   jobs:
   - job: DeployJob
-    displayName: 'Deploy Job - Model Deployment'
+    displayName: 'Deploy Job - Model Deployment and Monitoring'
     pool:
       vmImage: 'ubuntu-latest'
     
@@ -174,9 +174,9 @@ stages:
             echo "##vso[task.setvariable variable=subscription_id]$azure_subscription_id"
       
       - task: UsePythonVersion@0
-        displayName: 'Use Python 3.9'
+        displayName: 'Use Python 3.10'
         inputs:
-          versionSpec: '3.9'
+          versionSpec: '3.10'
           addToPath: true
       
       - script: |
@@ -230,3 +230,4 @@ stages:
           RESOURCE_GROUP: $(azureResourceGroup)
           WS_NAME: $(azureWorkspaceName)
           SUBSCRIPTION_ID: $(subscription_id)
+          ALERT_EMAIL: $(alert_email)

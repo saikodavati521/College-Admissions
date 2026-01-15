@@ -97,6 +97,7 @@ if __name__ == '__main__':
     print(f"Deployment: {admissions_deployment.name}")
 
     # Set traffic to 100% for the new deployment
+    print("Setting traffic to 100% for the new deployment...")
     endpoint = ml_client.online_endpoints.get(online_endpoint_name)
     endpoint.traffic = {deployment_name: 100}
     ml_client.online_endpoints.begin_create_or_update(endpoint)

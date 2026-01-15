@@ -8,6 +8,8 @@ from azure.mgmt.monitor.models import (
     MetricAlertSingleResourceMultipleMetricCriteria,
     MetricCriteria,
     MetricAlertAction,
+    ActionGroupResource,
+    EmailReceiver,
 )
 from datetime import timedelta
 
@@ -18,13 +20,13 @@ load_dotenv()
 subscription_id = os.getenv("SUBSCRIPTION_ID")
 resource_group = os.getenv("RESOURCE_GROUP")
 workspace_name = os.getenv("WS_NAME")
-action_group_resource_id = os.getenv("ACTION_GROUP_RESOURCE_ID")
+alert_email = os.getenv("ALERT_EMAIL",)
 
-credential=DefaultAzureCredential()
+credential = DefaultAzureCredential()
 
+action_group_name = "Admissions_Alert_Group"
 response_time_alert_rule_name = "HighServerResponseTime"
-
-server_exceptions_alert_rule_name = "ModelPredictionExceptions"
+server_exceptions_alert_rule_name = "ServerExceptions"
 
 if __name__ == '__main__':
 
@@ -42,7 +44,28 @@ if __name__ == '__main__':
 
     monitor_client = MonitorManagementClient(credential, subscription_id)
 
-    
+    # Create or update action group
+    action_group = ActionGroupResource(
+        location="global",
+        group_short_name="Admission_Model_Alerts",
+        enabled=True,
+        email_receivers=[
+            EmailReceiver(
+                name="EmailAdmin",
+                email_address=alert_email,
+                use_common_alert_schema=True
+            )
+        ]
+    )
+
+    created_action_group = monitor_client.action_groups.create_or_update(
+        resource_group_name=resource_group,
+        action_group_name=action_group_name,
+        action_group=action_group
+    )
+    action_group_resource_id = created_action_group.id
+    print(f"Created/updated action group: {action_group_name}")
+
     response_time_criteria = MetricAlertSingleResourceMultipleMetricCriteria(
         all_of=[
             MetricCriteria(
@@ -79,7 +102,7 @@ if __name__ == '__main__':
             MetricCriteria(
                 name=server_exceptions_alert_rule_name,
                 metric_name="exceptions/server",
-                time_aggregation="Total",  
+                time_aggregation="Count",  
                 operator="GreaterThan",
                 threshold=0,               
             )
@@ -92,7 +115,7 @@ if __name__ == '__main__':
         enabled=True,
         scopes=[app_insights_resource_id],
         evaluation_frequency=timedelta(minutes=1),  # check every 1 minute
-        window_size=timedelta(minutes=10),           # evaluate over last 10 minutes
+        window_size=timedelta(minutes=15),           # evaluate over last 10 minutes
         criteria=server_exceptions_criteria,
         actions=[MetricAlertAction(action_group_id=action_group_resource_id)],
         auto_mitigate=True,
