@@ -79,7 +79,7 @@ RAI_REGISTRY_NAME = "azureml"
 RAI_REGISTRY_LOCATION = "eastus"
 
 # Timeout configuration
-TIMEOUT = 300  # Timeout for each component job in seconds (5 minutes)
+TIMEOUT = 2400  # Timeout for each component job in seconds (10 minutes)
 POLLING_INTERVAL = 30  # Job status polling interval in seconds
 
 
@@ -203,8 +203,9 @@ def create_rai_pipeline(
         # Add counterfactual analysis
         counterfactual_job = rai_counterfactual_component(
             rai_insights_dashboard=create_rai_job.outputs.rai_insights_dashboard,
-            total_cfs=10,
+            total_cfs=1,
             desired_class="opposite",
+            feature_importance=False
         )
         counterfactual_job.set_limits(timeout=TIMEOUT)
 

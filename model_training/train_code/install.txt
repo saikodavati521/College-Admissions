@@ -1,0 +1,3 @@
+azure-mgmt-monitor
+azure-ai-ml
+azure-identity

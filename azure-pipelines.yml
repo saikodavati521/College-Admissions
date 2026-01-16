@@ -102,6 +102,7 @@ stages:
               inlineScript: |
                 echo "Waiting 10 seconds for everything to be finished uploading..."
                 sleep 10
+                echo "Starting model training..."
                 python model_training/command_job.py
             env:
               RESOURCE_GROUP: $(azureResourceGroup)
