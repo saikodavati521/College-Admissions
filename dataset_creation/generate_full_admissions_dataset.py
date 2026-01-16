@@ -14,7 +14,7 @@ sys.path.append(str(parent_dir))
 np.random.seed(42)
 
 # Define dataset parameters
-n_samples =15000# Total number of samples
+n_samples =7500# Total number of samples
 train_output_file = parent_dir / "model_training" / "train_data" / "train_admissions_dataset.csv"
 test_output_file = parent_dir / "model_training" / "test_data" / "test_admissions_dataset.csv"
 test_size = 0.2  # 20% for test set, 80% for train set
@@ -200,11 +200,11 @@ def apply_admission_logic(dataset):
     
     # Introduce unfairness for Gender (females slightly more likely to be accepted)
     gender_bias = np.zeros(len(dataset))
-    gender_bias[dataset['Gender'] == 0] = 0.1  # 10% boost for females (Gender=0)
+    gender_bias[dataset['Gender'] == 0] = 0.001  # 10% boost for females (Gender=0)
     
     # Introduce unfairness for Race (If you are Asian you are slightly more likely to be accepted)
     race_bias = np.zeros(len(dataset))
-    race_bias[dataset['Race_Asian'] == 1] = 0.1  # 10% boost for Asians
+    race_bias[dataset['Race_Asian'] == 1] = 0.001  # 10% boost for Asians
     
     # Combine base probability with biases
     final_prob = np.clip(base_prob + gender_bias + race_bias, 0, 1)
