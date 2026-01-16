@@ -146,7 +146,7 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                python Responsible_AI_Insights/model_analysis.py
+                python responsible_ai_gate/model_analysis.py
             name: raiGate
             env:
               RESOURCE_GROUP: $(azureResourceGroup)
