@@ -26,7 +26,6 @@ from dotenv import load_dotenv
 from config import (
     artifact_path_name,
     compute_cluster,
-    custom_environment,
     rai_experiment_name,
     test_data_name,
     train_data_name,

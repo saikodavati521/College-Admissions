@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 from config import (
     artifact_path_name,
     compute_cluster,
-    custom_environment,
+    custom_env_name,
     experiment_name,
     test_data_name,
     train_data_name,
@@ -49,9 +49,13 @@ MIN_SAMPLES_SPLIT = 20
 MIN_SAMPLES_LEAF = 10
 MAX_FEATURES = "sqrt"
 
-# Job polling interval (seconds)
-POLLING_INTERVAL = 30
-    
+
+# =============================================================================
+# Job Polling Configuration
+# =============================================================================
+POLLING_INTERVAL = 30  # Job status polling interval in seconds
+
+
 def main():
     """Create and submit Azure ML command job for model training.
 
@@ -102,12 +106,24 @@ def main():
     print(f"✓ Test data: {test_data_path}\n")
 
     # =========================================================================
+    # Retrieve Latest Environment Version
+    # =========================================================================
+    print("Retrieving latest environment version...")
+
+    # Get the latest version of the environment
+    env_versions = [int(e.version) for e in ml_client.environments.list(name=custom_env_name)]
+    latest_env_version = max(env_versions)
+    latest_env_path = f"azureml:{custom_env_name}:{latest_env_version}"
+
+    print(f"✓ Environment: {latest_env_path}\n")
+
+    # =========================================================================
     # Configure Command Job
     # =========================================================================
     print("Configuring training job...")
     print(f"  Experiment: {experiment_name}")
     print(f"  Compute: {compute_cluster}")
-    print(f"  Environment: {custom_environment}")
+    print(f"  Environment: {latest_env_path}")
     print(f"  Hyperparameters:")
     print(f"    - n_estimators: {N_ESTIMATORS}")
     print(f"    - random_state: {RANDOM_STATE}")
@@ -115,7 +131,7 @@ def main():
     print(f"    - min_samples_split: {MIN_SAMPLES_SPLIT}")
     print(f"    - min_samples_leaf: {MIN_SAMPLES_LEAF}")
     print(f"    - max_features: {MAX_FEATURES}\n")
-    
+
     job = command(
         inputs=dict(
             train_data=Input(type="mltable", path=train_data_path),
@@ -142,7 +158,7 @@ def main():
             "--max_features ${{inputs.max_features}} "
             "--artifact_path_name ${{inputs.artifact_path_name}}"
         ),
-        environment=custom_environment,
+        environment=latest_env_path,
         experiment_name=experiment_name,
         display_name="trained_admissions_model",
     )
@@ -163,7 +179,7 @@ def main():
     print(f"Checking every {POLLING_INTERVAL} seconds\n")
     
     terminal_statuses = ["Completed", "Failed", "Canceled", "NotResponding"]
-    
+
     while returned_job.status not in terminal_statuses:
         time.sleep(POLLING_INTERVAL)
         returned_job = ml_client.jobs.get(returned_job.name)

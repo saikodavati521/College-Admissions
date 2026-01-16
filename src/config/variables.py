@@ -10,15 +10,14 @@ Usage:
 # =============================================================================
 # Data Migration
 # =============================================================================
-train_data_name = "admissions-training-data"
-test_data_name = "admissions-testing-data"
+train_data_name = "admissions-train-data"
+test_data_name = "admissions-test-data"
 
 
 # =============================================================================
 # Environment Configuration
 # =============================================================================
 custom_env_name = "admissions_environment"
-custom_environment = f"azureml:{custom_env_name}@latest"
 
 
 # =============================================================================

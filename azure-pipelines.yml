@@ -100,7 +100,7 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                echo "Waiting 15 seconds for data assets to be finished uploading..."
+                echo "Waiting 10 seconds for everything to be finished uploading..."
                 sleep 10
                 python model_training/command_job.py
             env:
