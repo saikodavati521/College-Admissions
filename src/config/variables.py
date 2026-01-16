@@ -13,10 +13,6 @@ Usage:
 train_data_name = "admissions-train-data"
 test_data_name = "admissions-test-data"
 
-# Registered data assets (latest versions)
-registered_train_data = f"azureml:admissions-train-data:latest"
-registered_test_data = f"azureml:admissions-test-data:latest"
-
 
 # =============================================================================
 # Environment Configuration

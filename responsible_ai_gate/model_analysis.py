@@ -35,7 +35,7 @@ WORKSPACE_NAME = os.getenv("WS_NAME")
 # RAI analysis configuration
 DOWNLOAD_PATH = "./rai_outputs"
 OUTPUT_NAME = "ux_json"
-SHAP_THRESHOLD = 5.4  # Threshold for sensitive feature SHAP values
+SHAP_THRESHOLD = 0.4  # Threshold for sensitive feature SHAP values
 SENSITIVE_FEATURES = [
     "Gender",
     "Race_American_Indian_or_Alaska_Native",
@@ -53,7 +53,7 @@ RACE_FEATURES = [
     "Race_White",
     "Ethnicity_Hispanic_or_Latino"
 ]
-RACE_STDEV_THRESHOLD = 5.0  # Number of standard deviations for outlier detection
+RACE_STDEV_THRESHOLD = 2.0  # Number of standard deviations for outlier detection
 
 
 def find_latest_job_in_experiment(ml_client, experiment_name):

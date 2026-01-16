@@ -4,7 +4,7 @@ This script creates and registers a custom Azure ML environment with
 specified dependencies for the College Admissions Model project.
 
 Usage:
-    python create_env.py
+    python custom_env.py
 
 Environment Variables:
     SUBSCRIPTION_ID: Azure subscription ID

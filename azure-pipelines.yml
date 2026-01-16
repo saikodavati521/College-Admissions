@@ -4,12 +4,13 @@
 # Two-stage pipeline: Train (with RAI gate) -> Deploy (conditional)
 #
 # Stages:
-#   1. Train: Model training, registration, and RAI validation
-#   2. Deploy: Conditional deployment based on RAI gate results
+#   1. CI: Model training, registration, and RAI validation
+#   2. CD: Conditional deployment based on RAI gate results
 # =============================================================================
 
 trigger:
   - main
+  - dev
 
 pool:
   vmImage: ubuntu-latest
@@ -22,11 +23,11 @@ variables:
   azureServiceConnection: 'Azure-ML-Admissions-Connection'
 
 stages:
-  # ===========================================================================
-  # TRAIN STAGE
-  # ===========================================================================
-  - stage: Train
-    displayName: 'Train Stage'
+  # ==================================
+  # CI STAGE
+  # ==================================
+  - stage: CI
+    displayName: 'CI Stage'
     jobs:
       - job: TrainJob
         displayName: 'Train Job - Model Training and RAI Gated Evaluation'
@@ -34,9 +35,9 @@ stages:
           vmImage: 'ubuntu-latest'
 
         steps:
-          # =====================================================================
+          # ==================================
           # INITIAL SETUP
-          # =====================================================================
+          # ==================================
 
           - task: AzureCLI@2
             displayName: 'Authenticate & Export Azure Subscription ID'
@@ -62,9 +63,9 @@ stages:
               pip install -r requirements.txt
             displayName: 'Install Python Dependencies'
       
-          # =====================================================================
+          # ==================================
           # TRAINING PIPELINE STEPS
-          # =====================================================================
+          # ==================================
 
           - task: AzureCLI@2
             displayName: '1. Create/Update Azure ML Environment'
@@ -73,7 +74,7 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                python create_env/create_env.py
+                python create_env/custom_env.py
             env:
               RESOURCE_GROUP: $(azureResourceGroup)
               WS_NAME: $(azureWorkspaceName)
@@ -99,8 +100,8 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                echo "Waiting 15 seconds for environment to be fully ready..."
-                sleep 15
+                echo "Waiting 15 seconds for data assets to be finished uploading..."
+                sleep 10
                 python model_training/command_job.py
             env:
               RESOURCE_GROUP: $(azureResourceGroup)
@@ -120,9 +121,9 @@ stages:
               WS_NAME: $(azureWorkspaceName)
               SUBSCRIPTION_ID: $(subscription_id)
 
-          # =====================================================================
+          # ==================================
           # RESPONSIBLE AI GATE
-          # =====================================================================
+          # ==================================
 
           - task: AzureCLI@2
             displayName: '5. Generate Responsible AI Dashboard'
@@ -152,13 +153,13 @@ stages:
               SUBSCRIPTION_ID: $(subscription_id)
 
 
-  # ===========================================================================
-  # DEPLOY STAGE (Conditional on RAI Gate)
-  # ===========================================================================
-  - stage: Deploy
-    displayName: 'Deploy Stage'
-    dependsOn: Train
-    condition: and(succeeded(), eq(stageDependencies.Train.outputs['TrainJob.raiGate.rai_pass'], 'true'))
+  # ==================================
+  # CD STAGE (Conditional on RAI Gate)
+  # ==================================
+  - stage: CD
+    displayName: 'CD Stage'
+    dependsOn: CI
+    condition: and(succeeded(), eq(stageDependencies.CI.outputs['TrainJob.raiGate.rai_pass'], 'true'))
     jobs:
       - job: DeployJob
         displayName: 'Deploy Job - Model Deployment and Monitoring'
@@ -166,9 +167,9 @@ stages:
           vmImage: 'ubuntu-latest'
 
         steps:
-          # =====================================================================
+          # ==================================
           # INITIAL SETUP
-          # =====================================================================
+          # ==================================
 
           - task: AzureCLI@2
             displayName: 'Authenticate & Export Azure Subscription ID'
@@ -198,9 +199,9 @@ stages:
               WS_NAME: $(azureWorkspaceName)
               SUBSCRIPTION_ID: $(subscription_id)
 
-          # =====================================================================
+          # ==================================
           # DEPLOYMENT STEPS
-          # =====================================================================
+          # ==================================
 
           - task: AzureCLI@2
             displayName: '1. Create/Update Endpoint'

@@ -28,7 +28,7 @@ RESOURCE_GROUP = os.getenv("RESOURCE_GROUP")
 WORKSPACE_NAME = os.getenv("WS_NAME")
 
 # Request file path
-REQUEST_FILE = "invoke_model/sample.json"
+REQUEST_FILE = "sample.json"
 
 def invoke_endpoint():
     """Invoke the deployed model endpoint with sample data.
