@@ -160,11 +160,31 @@ def parse_ux_json(download_path=DOWNLOAD_PATH):
     
     # Find the ux.json file in the download directory
     download_dir = Path(download_path)
+    
+    # Debug: Check if directory exists and list contents
+    if not download_dir.exists():
+        raise RuntimeError(
+            f"Download directory does not exist: {download_path}. "
+            "Check if download completed successfully."
+        )
+    
+    print(f"Checking directory: {download_dir.absolute()}")
+    print(f"Directory exists: {download_dir.exists()}")
+    
+    # List all files and subdirectories for debugging
+    all_items = list(download_dir.rglob("*"))
+    print(f"Total items found (recursive): {len(all_items)}")
+    if all_items:
+        print("First 10 items:")
+        for item in all_items[:10]:
+            print(f"  - {item.relative_to(download_dir)} ({'dir' if item.is_dir() else 'file'})")
+    
     ux_json_files = list(download_dir.rglob("*.json"))
     
     if not ux_json_files:
         raise RuntimeError(
             f"No JSON files found in {download_path}. "
+            f"Found {len(all_items)} total items. "
             "Check if download completed successfully."
         )
     
