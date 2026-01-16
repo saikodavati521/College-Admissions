@@ -17,10 +17,10 @@ pool:
 
 variables:
   # Azure ML workspace targeting variables
-  azureResourceGroup: 'rg-admissions'
-  azureWorkspaceName: 'Admissions-Workspace'
-  alert_email: 'michael.spurgeon@sweetrush.com'
-  azureServiceConnection: 'Azure-ML-Admissions-Connection'
+  azureResourceGroup: 'Your-Azure-ML-Resource-Group' # Replace with your resource group name
+  azureWorkspaceName: 'Your-Azure-ML-Workspace-Name' # Replace with your workspace name
+  alert_email: 'Your-Email-Address' # Replace with your email
+  azureServiceConnection: 'Azure-ML-Admissions-Connection' # The name of your Azure service connection
 
 stages:
   # ==================================
