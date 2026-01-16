@@ -63,64 +63,6 @@ stages:
               pip install -r requirements.txt
             displayName: 'Install Python Dependencies'
       
-          # ==================================
-          # TRAINING PIPELINE STEPS
-          # ==================================
-
-          - task: AzureCLI@2
-            displayName: '1. Create/Update Azure ML Environment'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python create_env/custom_env.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-          - task: AzureCLI@2
-            displayName: '2. Dataset Migration'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python data_migration/migrate.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-          - task: AzureCLI@2
-            displayName: '3. Model Training'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                echo "Waiting 10 seconds for everything to be finished uploading..."
-                sleep 10
-                echo "Starting model training..."
-                python model_training/command_job.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-          - task: AzureCLI@2
-            displayName: '4. Register Model'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python register_model/register.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
 
           # ==================================
           # RESPONSIBLE AI GATE
