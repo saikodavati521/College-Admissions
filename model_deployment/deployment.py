@@ -138,7 +138,7 @@ def deploy_model():
         environment=latest_env_path,
         code_configuration=CodeConfiguration(
             code=str(scoring_code_path),
-            scoring_script="model_deployment/scoring_code/score.py",
+            scoring_script="score.py",
         ),
         instance_type=INSTANCE_TYPE,
         instance_count=INSTANCE_COUNT,
