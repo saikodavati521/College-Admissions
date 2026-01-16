@@ -22,7 +22,7 @@ from azure.ai.ml import MLClient
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
-from config import experiment_name
+from config import rai_experiment_name
 
 # Load environment variables from .env file
 load_dotenv()
@@ -130,6 +130,11 @@ def download_ux_json(ml_client, job, output_name=OUTPUT_NAME,
     print(f"\nDownloading '{output_name}' output from job: {job.name}")
     print(f"Download path: {download_path}")
     
+    # Create download directory if it doesn't exist
+    download_dir = Path(download_path)
+    download_dir.mkdir(parents=True, exist_ok=True)
+    print(f"✓ Download directory ready: {download_dir.absolute()}")
+    
     try:
         ml_client.jobs.download(
             name=job.name,
@@ -137,6 +142,11 @@ def download_ux_json(ml_client, job, output_name=OUTPUT_NAME,
             download_path=download_path
         )
         print(f"✓ Successfully downloaded '{output_name}' to {download_path}")
+        
+        # Verify files were downloaded
+        downloaded_files = list(download_dir.rglob("*"))
+        print(f"  Downloaded {len(downloaded_files)} file(s)/folder(s)")
+        
     except Exception as e:
         raise RuntimeError(
             f"Failed to download '{output_name}' from job '{job.name}': {str(e)}"
@@ -430,7 +440,7 @@ def main():
     
     try:
         # Find the latest job in the RAI experiment
-        latest_job = find_latest_job_in_experiment(ml_client, experiment_name)
+        latest_job = find_latest_job_in_experiment(ml_client, rai_experiment_name)
         
         # Validate that the job completed successfully
         validate_job_completion(latest_job)
@@ -456,7 +466,7 @@ def main():
         print("RAI Dashboard Analysis Complete")
         print("=" * 80)
         print(f"Job name: {latest_job.name}")
-        print(f"Experiment: {experiment_name}")
+        print(f"Experiment: {rai_experiment_name}")
         print(f"Output location: {DOWNLOAD_PATH}")
         print(f"RAI Validation: {'PASSED' if rai_pass else 'FAILED'}")
         print("=" * 80)
