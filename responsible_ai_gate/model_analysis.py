@@ -33,7 +33,7 @@ RESOURCE_GROUP = os.getenv("RESOURCE_GROUP")
 WORKSPACE_NAME = os.getenv("WS_NAME")
 
 # RAI analysis configuration
-DOWNLOAD_PATH = "./rai_outputs"
+DOWNLOAD_PATH = "responsible_ai_gate/rai_outputs"
 OUTPUT_NAME = "ux_json"
 SHAP_THRESHOLD = 0.4  # Threshold for sensitive feature SHAP values
 SENSITIVE_FEATURES = [
