@@ -16,11 +16,11 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  # Azure ML workspace targeting variables
-  azureResourceGroup: 'rg-admissions'
-  azureWorkspaceName: 'Admissions-Workspace'
-  alert_email: 'michael.spurgeon@sweetrush.com'
-  azureServiceConnection: 'Azure-ML-Admissions-Connection'
+  # Azure ML workspace and other variables
+  azureResourceGroup: 'Your-Azure-ML-Resource-Group' # Replace with your Resource Group Name
+  azureWorkspaceName: 'Your-Azure-ML-Workspace-Name' # Replace with your Workspace Name
+  alert_email: 'Your-Email-Address' # Replace with your Email
+  azureServiceConnection: 'Azure-ML-Admissions-Connection' # The name of your Azure Service Connection
 
 stages:
   # ==================================
@@ -122,124 +122,3 @@ stages:
               WS_NAME: $(azureWorkspaceName)
               SUBSCRIPTION_ID: $(subscription_id)
 
-          # ==================================
-          # RESPONSIBLE AI GATE
-          # ==================================
-
-          - task: AzureCLI@2
-            displayName: '5. Generate Responsible AI Dashboard'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python responsible_ai_gate/responsible.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-          - task: AzureCLI@2
-            displayName: '6. RAI Gate - Analyze RAI Insights'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python responsible_ai_gate/model_analysis.py
-            name: raiGate
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-
-  # ==================================
-  # CD STAGE (Conditional on RAI Gate)
-  # ==================================
-  - stage: CD
-    displayName: 'CD Stage'
-    dependsOn: CI
-    condition: and(succeeded(), eq(stageDependencies.CI.outputs['TrainJob.raiGate.rai_pass'], 'true'))
-    jobs:
-      - job: DeployJob
-        displayName: 'Deploy Job - Model Deployment and Monitoring'
-        pool:
-          vmImage: 'ubuntu-latest'
-
-        steps:
-          # ==================================
-          # INITIAL SETUP
-          # ==================================
-
-          - task: AzureCLI@2
-            displayName: 'Authenticate & Export Azure Subscription ID'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Fetching subscription from service connection..."
-                azure_subscription_id=$(az account show --query id -o tsv)
-
-                # Export for the rest of the job
-                echo "##vso[task.setvariable variable=subscription_id]$azure_subscription_id"
-
-          - task: UsePythonVersion@0
-            displayName: 'Use Python 3.9'
-            inputs:
-              versionSpec: '3.9'
-              addToPath: true
-
-          - script: |
-              python -m pip install --upgrade pip
-              pip install -r requirements.txt
-            displayName: 'Install Python Dependencies'
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-          # ==================================
-          # DEPLOYMENT STEPS
-          # ==================================
-
-          - task: AzureCLI@2
-            displayName: '1. Create/Update Endpoint'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python model_deployment/endpoint_creation/endpoint.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-          - task: AzureCLI@2
-            displayName: '2. Deploy Model to Endpoint'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python model_deployment/deployment.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-
-          - task: AzureCLI@2
-            displayName: '3. Configure Model Monitoring'
-            inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                python model_deployment/model_monitoring/monitor.py
-            env:
-              RESOURCE_GROUP: $(azureResourceGroup)
-              WS_NAME: $(azureWorkspaceName)
-              SUBSCRIPTION_ID: $(subscription_id)
-              ALERT_EMAIL: $(alert_email)
