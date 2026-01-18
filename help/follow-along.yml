@@ -160,7 +160,7 @@ stages:
   - stage: CD
     displayName: 'CD Stage'
     dependsOn: CI
-    condition: and(succeeded(), eq(stageDependencies.CI.outputs['TrainJob.raiGate.rai_pass'], 'true'))
+    condition: and(succeeded(), eq(stageDependencies.CI.outputs['TrainJob.raiGate.rai_pass'], 'True'))
     jobs:
       - job: DeployJob
         displayName: 'Deploy Job - Model Deployment and Monitoring'
