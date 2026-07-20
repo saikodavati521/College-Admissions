@@ -36,6 +36,9 @@ def init():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     
+    # Prevent duplicate logs by not propagating to root logger
+    logger.propagate = False
+    
     # Add StreamHandler for Azure ML container logs
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.INFO)

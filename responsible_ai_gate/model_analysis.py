@@ -456,10 +456,10 @@ def main():
         
         # Set Azure Pipeline output variable for use in subsequent stages
         if rai_pass:
-            print("##vso[task.setvariable variable=rai_pass;isOutput=true]true")
+            print("##vso[task.setvariable variable=rai_pass;isOutput=true]True")
             print("RAI Gate: PASSED")
         else:
-            print("##vso[task.setvariable variable=rai_pass;isOutput=true]false")
+            print("##vso[task.setvariable variable=rai_pass;isOutput=true]False")
             print("RAI Gate: FAILED")
 
         print("\n" + "=" * 80)

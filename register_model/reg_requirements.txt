@@ -1,4 +1,0 @@
-azure-ai-ml==1.27.1
-azure-identity
-mlflow-skinny==2.7.1
-azureml-mlflow==1.48.0
